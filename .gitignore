@@ -1,0 +1,16 @@
+#Data formats
+*.csv
+*.gpkg
+*.nc
+*.nc4
+*.tar
+*.dat
+*.json
+
+#Documents
+*.docx
+*.txt
+
+#Python
+*.pyc
+*.ipynb_checkpoints
