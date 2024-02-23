@@ -10,7 +10,8 @@ import time
 start = time.time()
 
 issue_months = [1, 2, 3, 4, 5, 6, 7]
-#Load models
+#Load models. For loading models not created today, use read_models_from_repo
+#or specific_date parameters
 lgb_models_10, lgb_models_50, lgb_models_90 = load_models(issue_months)
 #Read data
 data = pd.read_pickle('data/train_test.pkl')

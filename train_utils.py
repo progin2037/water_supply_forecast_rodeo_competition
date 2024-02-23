@@ -117,14 +117,22 @@ def save_models(issue_months: list,
         print(f'LightGBM model for month {month} and quantile 0.9 saved')
 
 
-def load_models(issue_months: list) -> tuple[list, list, list]:
+def load_models(issue_months: list,
+                read_models_from_repo: bool=False,
+                specific_date: str='today') -> tuple[list, list, list]:
     """
     Load LightGBM models. Models are read separately for different quantiles
     and months.
     
     Args:
         issue_months (list): Different months for models to load. The months
-            are based on issue dates.
+            are based on issue dates
+        read_models_from_repo (bool): Condition if read 2023_12_21 models from
+            the repo used in the Hindcast Stage of the competition or not.
+            Defaults to False
+        specific_date (str): a date for models to be loaded. 
+            Defaults to 'today'. For other values, use date in the format of
+            YYYY_MM_DD
     Returns:
         lgb_models_10 (list): LightGBM models for 0.1 quantile. Should be in
             the same order as issue_months
@@ -136,12 +144,14 @@ def load_models(issue_months: list) -> tuple[list, list, list]:
     lgb_models_10 = []
     lgb_models_50 = []
     lgb_models_90 = []
-    
-    today = pd.to_datetime('today').strftime('%Y_%m_%d')
-    #If folder with today's date wasn't found, use models uploaded to repo from
-    #2023-12-21. These are the models used in the Hindcast Stage
-    if not os.path.exists(f'models\{today}'):  
+
+    if read_models_from_repo == True:  
         today = '2023_12_21'
+    elif specific_date != 'today':
+        today = specific_date
+    else:
+        today = pd.to_datetime('today').strftime('%Y_%m_%d')
+
     #Get path
     path_save_models = os.path.join('models', today)
     #Iterate over paths from different months and append models to lists
