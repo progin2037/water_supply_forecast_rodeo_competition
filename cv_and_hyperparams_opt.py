@@ -62,8 +62,8 @@ def get_years_cv(year_range: bool) -> list:
             In case of many years in one test fold, those years are specified
             in consecutive lists inside the years_cv list
     """
-    #3 years in test
     if year_range == True:
+        #2 years in one fold
         years_cv = [[1994, 1995],
                     [1996, 1997],
                     [1998, 1999],
@@ -93,6 +93,78 @@ def get_years_cv(year_range: bool) -> list:
                     2022]
     return years_cv
 
+def train_cv(train: pd.DataFrame,
+             labels: pd.Series,
+             train_cv_idxs: list,
+             test_cv_idxs: list,
+             train_feat: list,
+             params: dict,
+             categorical: list,
+             num_boost_round_start: int,
+             num_boost_round_month: int,
+             alpha: float,
+             fold: int,
+             lgb_models: dict) -> tuple[np.array, dict]:
+    """
+    Training pipeline for given fold-quantile combination. Creates model for
+    given fold for the first time or continues training previous model until
+    threshold is met.
+    
+    Args:
+        train (pd.DataFrame): Whole training data before dividing into CV folds
+        labels (pd.Series): Labels corresponding to train data
+        train_cv_idxs (list): Indexes of train data for all folds
+        test_cv_idxs (list): Indexes of test data for all folds
+        train_feat (list): Features to use for this month
+        params (dict): LightGBM hyperparameters to use for this month
+        categorical (list): Categorical features in the model
+        num_boost_round_start (int): Number of estimators used in LightGBM
+            model after which early stopping criterion starts (could be seen
+            as the minimum number of model iterations)
+        num_boost_round_month (int): Maximum number of estimators used in
+            LightGBM model for this training iteration. Model is trained until
+            num_boost_round_month is reached
+        alpha (float): Informs on which quantile should be calculated. In this
+            case, it is a value from 0.1, 0.5 or 0.9
+        fold (int): Fold from the given iteration. Used to get correct train
+            and test indexes and key for LightGBM model for lgb_models
+        lgb_models (dict): A dictionary of LightGBM models. One of its keys
+            (folds) have to be updated in this iteration
+    Returns:
+        preds (np.array): Predictions from given quantile and fold
+        lgb_models (dict): A dictionary of LightGBM models with updated fold
+            values
+    """
+    #Add alpha to params (specify quantile)
+    params['alpha'] = alpha
+    #Crate lgb.Datasets for given fold
+    train_data = lgb.Dataset(data = train.loc[train_cv_idxs[fold],
+                                              train_feat],
+                             label = labels[train_cv_idxs[fold]],
+                             categorical_feature = categorical)
+    test_data = lgb.Dataset(data = train.loc[test_cv_idxs[fold],
+                                             train_feat],
+                            label = labels[test_cv_idxs[fold]],
+                            reference = train_data)
+    #Train model
+    if num_boost_round_month == num_boost_round_start:
+        #Use lgb.train for the first CV iteration (for num_boost_round_start 
+        #number of LightGBM boosting iters)
+        lgb_model = lgb.train(params,
+                              train_data,
+                              valid_sets=[train_data, test_data],
+                              num_boost_round = num_boost_round_start,
+                              keep_training_booster = True)
+        #Update dictionary with first fold result
+        lgb_models[fold] = lgb_model
+    else:
+        #For other CV iters, update LightGBM model for early_stopping_step
+        #number of itearations
+        while lgb_models[fold].current_iteration() < num_boost_round_month:
+            lgb_models[fold].update()
+    #Get predictions
+    preds = lgb_models[fold].predict(train.loc[test_cv_idxs[fold], train_feat])
+    return preds, lgb_models
 
 def lgbm_cv(train: pd.DataFrame,
             labels: pd.Series,
@@ -132,7 +204,7 @@ def lgbm_cv(train: pd.DataFrame,
         year_range (bool): Specifies if there could be many years in test data
             (True) or just one test data per fold (False)
         train_feat_dict (dict): Features to use for different months. Key
-            indicates month and value the features.
+            indicates month and value the features
         params_dict (dict): LightGBM hyperparameters to use for different months.
             Key indicates month and value a dictionary of hyperparameters
         categorical (list): Categorical features in the model
@@ -143,7 +215,6 @@ def lgbm_cv(train: pd.DataFrame,
             are imported from utils)
         distr_perc (float): How much importance is given for distribution
             estimate. For 0.4 value, it's 40% (while LightGBM model is 60%)
-        
     Returns:
         best_cv_early_stopping (np.array): CV results from different months with
             number of model iterations for each month
@@ -151,276 +222,240 @@ def lgbm_cv(train: pd.DataFrame,
         num_rounds_months (list): Number of model iterations for each month
     """
     ###########################################################################
-    #PARAMETERS AND VARIABLES INITIALIZATION
+    #Global parameters and variables initialization
     ###########################################################################
-
-    
     #Initialize empty variables
     results_10_clipped = []
     results_50_clipped = []
     results_90_clipped = []
-    cv_results = []
     cv_results_all_months = dict()
-    
-    results_10_clipped_all_months = dict()
-    results_50_clipped_all_months = dict()
-    results_90_clipped_all_months = dict()
-    
     results_10 = []
     results_50 = []
     results_90 = []
-    
-    #Iterate first over months, so training from one month is optimized first
+
+    ###########################################################################
+    #Iterate over months. Train one month at a time
+    ###########################################################################    
     for month_idx, month in tqdm(enumerate(issue_months)):
+        print(f'\Month: {month}')
+        #Initialize variables for the month
+        #First evaluation done after num_boost_round_start iters
         num_boost_round_month = num_boost_round_start
-        cv_results_avg_fold = []
-        
-        results_10_clipped_all = []
-        results_50_clipped_all = []
-        results_90_clipped_all = []
-        
+        #Set previous value of averaged CV to infinity for first evaluation,
+        #so the first evaluated value is always less
         cv_result_avg_fold_prev = np.inf
+        #Initialize number of early stopping conditions met so far with 0
         num_prev_iters_better = 0
-        
+        #All [avg fold result-number of LightGBM iterations] from given month.
+        #All LGBM iters after each early_stopping_step have a row in the list
+        cv_results_avg_fold = []
+        #Quantile 0.5 models for newest fold results
         lgb_models_50 = dict()
+        #Quantile 0.1 models for newest fold results
         lgb_models_10 = dict()
+        #Quantile 0.9 models for newest fold results
         lgb_models_90 = dict()
-        
-        print(f'\nmonth {month}')
+
         #######################################################################
-        #TRAINING
+        #Start training. Train until early stopping/maximum number of iters met
         #######################################################################
-        while (num_prev_iters_better < early_stopping_rounds) & (num_boost_round_month <= num_boost_round):
+        while (num_prev_iters_better < early_stopping_rounds) &\
+            (num_boost_round_month <= num_boost_round):
+            #Initialize variables for given iter
             results_10_clipped = []
             results_50_clipped = []
             results_90_clipped = []
             cv_results = []
-            
+
+            ###################################################################
+            #Iterate over different folds
+            ###################################################################
             for fold, year in enumerate(years_cv):
+                #Get indexes from train DataFrame for given fold's train and test
                 train_cv_idxs, test_cv_idxs = get_cv_folds(train,
                                                            month,
                                                            years_cv,
                                                            year_range)
+                #Choose features from given month
                 train_feat = train_feat_dict[month]
-    
                 #Get params from given month
                 params = params_dict[month]
-
-                #Add alpha
-                params['alpha'] = 0.5
-
-                train_data = lgb.Dataset(data = train.loc[train_cv_idxs[fold], train_feat],
-                                         label = labels[train_cv_idxs[fold]],
-                                         categorical_feature = categorical)
-                test_data = lgb.Dataset(data = train.loc[test_cv_idxs[fold], train_feat],
-                                        label = labels[test_cv_idxs[fold]],
-                                        reference = train_data)
-    
-                if num_boost_round_month == num_boost_round_start:
-                    lgb_model_50 = lgb.train(params,
-                                             train_data,
-                                             valid_sets=[train_data, test_data],
-                                             num_boost_round = num_boost_round_start,
-                                             keep_training_booster = True)
-                    lgb_models_50[fold] = lgb_model_50
-                else:
-                    while lgb_models_50[fold].current_iteration() < num_boost_round_month:
-                        lgb_models_50[fold].update()
-
-
-                preds_50 = lgb_models_50[fold].predict(train.loc[test_cv_idxs[fold], train_feat])
-
-                #Get params from given month
-                params = params_dict[month]
-                #Add alpha
-                params['alpha'] = 0.1
-
-                train_data = lgb.Dataset(data = train.loc[train_cv_idxs[fold], train_feat],
-                                         label = labels[train_cv_idxs[fold]],
-                                         categorical_feature = categorical)
-                test_data = lgb.Dataset(data = train.loc[test_cv_idxs[fold], train_feat],
-                                        label = labels[test_cv_idxs[fold]],
-                                        reference = train_data)
-
-
-                if num_boost_round_month == num_boost_round_start:
-                    lgb_model_10 = lgb.train(params,
-                                             train_data,
-                                             valid_sets=[train_data, test_data],
-                                             num_boost_round = num_boost_round_start,
-                                             keep_training_booster = True
-                                            )
-                    lgb_models_10[fold] = lgb_model_10
-                else:
-                    while lgb_models_10[fold].current_iteration() < num_boost_round_month:
-                        lgb_models_10[fold].update()
-
-
-                preds_10_lgbm = lgb_models_10[fold].predict(train.loc[test_cv_idxs[fold], train_feat])
-
-                #Get params from given month
-                params = params_dict[month]
-                #Add alpha
-                params['alpha'] = 0.9
-
-                train_data = lgb.Dataset(data = train.loc[train_cv_idxs[fold], train_feat],
-                                         label = labels[train_cv_idxs[fold]],
-                                         categorical_feature = categorical)
-                test_data = lgb.Dataset(data = train.loc[test_cv_idxs[fold], train_feat],
-                                        label = labels[test_cv_idxs[fold]],
-                                        reference = train_data)
-
-                if num_boost_round_month == num_boost_round_start:
-                    lgb_model_90 = lgb.train(params,
-                                             train_data,
-                                             valid_sets=[train_data, test_data],
-                                             num_boost_round = num_boost_round_start,
-                                             keep_training_booster = True)
-                    lgb_models_90[fold] = lgb_model_90
-                else:
-                    while lgb_models_90[fold].current_iteration() < num_boost_round_month:
-                        lgb_models_90[fold].update()
-
-                preds_90_lgbm = lgb_models_90[fold].predict(train.loc[test_cv_idxs[fold], train_feat])
-
+                #Train/continue training model from given fold for Q0.5
+                preds_50, lgb_models_50 = train_cv(train,
+                                                   labels,
+                                                   train_cv_idxs,
+                                                   test_cv_idxs,
+                                                   train_feat,
+                                                   params,
+                                                   categorical,
+                                                   num_boost_round_start,
+                                                   num_boost_round_month,
+                                                   0.5,
+                                                   fold,
+                                                   lgb_models_50)
+                #Train/continue training model from given fold for Q0.1.
+                #Named preds_10_lgbm, as final preds_10 will use a weighted
+                #average with distribution estimates
+                preds_10_lgbm, lgb_models_10 = train_cv(train,
+                                                        labels,
+                                                        train_cv_idxs,
+                                                        test_cv_idxs,
+                                                        train_feat,
+                                                        params,
+                                                        categorical,
+                                                        num_boost_round_start,
+                                                        num_boost_round_month,
+                                                        0.1,
+                                                        fold,
+                                                        lgb_models_10)
+                #Train/continue training model from given fold for Q0.9.
+                #Named preds_90_lgbm, as final preds_10 will use a weighted
+                #average with distribution estimates
+                preds_90_lgbm, lgb_models_90 = train_cv(train,
+                                                        labels,
+                                                        train_cv_idxs,
+                                                        test_cv_idxs,
+                                                        train_feat,
+                                                        params,
+                                                        categorical,
+                                                        num_boost_round_start,
+                                                        num_boost_round_month,
+                                                        0.9,
+                                                        fold,
+                                                        lgb_models_90)
+                #Get test rows from given fold with predictions
                 result_df = train.loc[test_cv_idxs[fold], train_feat]
                 result_df['volume_50'] = preds_50
-
                 result_df['volume_10_lgbm'] = preds_10_lgbm
                 result_df['volume_90_lgbm'] = preds_90_lgbm
-
+                #Append quantile results
                 result_df = get_quantiles_from_distr(result_df,
                                                      min_max_site_id,
                                                      all_distr_dict,
                                                      path_distr,
                                                      distr_to_change)
-
                 #Add min and max for site_id as 'max' and 'min' columns
                 result_df = pd.merge(result_df,
                                      min_max_site_id,
                                      how = 'left',
                                      left_on = 'site_id',
                                      right_index = True)
-
-                #Change volume values values greater than min (max) for site_id to that min (max) value.
-                #Do it also for distribution volume, though it shouldn't exceed maximum values, just to be certain.
-                result_df.loc[result_df['volume_50'] < result_df['min'], 'volume_50'] = result_df['min']
-                result_df.loc[result_df['volume_50'] > result_df['max'], 'volume_50'] = result_df['max']
-
-                result_df.loc[result_df['volume_10_lgbm'] < result_df['min'], 'volume_10_lgbm'] = result_df['min']
-                result_df.loc[result_df['volume_10_distr'] < result_df['min'], 'volume_10_distr'] = result_df['min']
-
-                result_df.loc[result_df['volume_90_lgbm'] > result_df['max'], 'volume_90_lgbm'] = result_df['max']
-                result_df.loc[result_df['volume_90_distr'] > result_df['max'], 'volume_90_distr'] = result_df['max']
-
-
-                #Clipping, if volume_90 < volume_50 -> change volume_90 to volume_50
-                #          if volume_50 < volume_10 -> change volume_10 to volume_50            
-                #Do it also for distribution estimate to be certain that it's used.
+                #Change volume values greater than min (max) for site_id to
+                #that min (max) value. Do it also for distribution volume.
+                #Though distribution estimates shouldn't exceed maximum values,
+                #do it just to be certain
+                result_df.loc[result_df['volume_50'] < result_df['min'],
+                              'volume_50'] = result_df['min']
+                result_df.loc[result_df['volume_50'] > result_df['max'],
+                              'volume_50'] = result_df['max']
+                result_df.loc[result_df['volume_10_lgbm'] < result_df['min'],
+                              'volume_10_lgbm'] = result_df['min']
+                result_df.loc[result_df['volume_10_distr'] < result_df['min'],
+                              'volume_10_distr'] = result_df['min']
+                result_df.loc[result_df['volume_90_lgbm'] > result_df['max'],
+                              'volume_90_lgbm'] = result_df['max']
+                result_df.loc[result_df['volume_90_distr'] > result_df['max'],
+                              'volume_90_distr'] = result_df['max']
+                #Clipping:
+                    #if volume_90 < volume_50 -> change volume_90 to volume_50
+                    #if volume_50 < volume_10 -> change volume_10 to volume_50            
                 result_df.loc[result_df.volume_90_lgbm < result_df.volume_50,
                               'volume_90_lgbm'] = result_df.volume_50
                 result_df.loc[result_df.volume_50 < result_df.volume_10_lgbm,
                               'volume_10_lgbm'] = result_df.volume_50
-    
                 result_df.loc[result_df.volume_90_distr < result_df.volume_50,
                               'volume_90_distr'] = result_df.volume_50
                 result_df.loc[result_df.volume_50 < result_df.volume_10_distr,
                               'volume_10_distr'] = result_df.volume_50
-
-
-                #Get weighted average from distribution and models for Q0.1 and Q0.9
+                #Get weighted average from distributions and models for Q0.1
+                #and Q0.9
                 result_df['volume_10'] =\
-                    distr_perc * result_df.volume_10_distr + (1 - distr_perc) * result_df.volume_10_lgbm
+                    distr_perc * result_df.volume_10_distr +\
+                        (1 - distr_perc) * result_df.volume_10_lgbm
                 result_df['volume_90'] =\
-                    distr_perc * result_df.volume_90_distr + (1 - distr_perc) * result_df.volume_90_lgbm
-
-
+                    distr_perc * result_df.volume_90_distr +\
+                        (1 - distr_perc) * result_df.volume_90_lgbm
+                #Get quantile loss for given fold
                 result_10 = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                        result_df.volume_10,
-                                        alpha = 0.1)
-
+                                              result_df.volume_10,
+                                              alpha = 0.1)
                 result_50 = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                        result_df.volume_50,
-                                        alpha = 0.5)
-
+                                              result_df.volume_50,
+                                              alpha = 0.5)
                 result_90 = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                        result_df.volume_90,
-                                        alpha = 0.9)
-
+                                              result_df.volume_90,
+                                              alpha = 0.9)
                 #Append results from this fold
                 results_10.append(result_10)
                 results_50.append(result_50)
                 results_90.append(result_90)
-
-
-                cv_result = 2 * (result_10 +
-                             result_50 +
-                             result_90) / 3
-
+                #Get competition metric
+                cv_result = 2 * (result_10 + result_50 + result_90) / 3
+                #Do the final clipping to make sure that the restrictions are
+                #met after taking weighted average for volume_10 and volume_90
                 results_clipped = result_df.copy()
-                #Do the final clipping to make sure that the restriction is fulfilled
-                #after taking weighted average for volume_10 and volume_90
                 results_clipped.loc[results_clipped.volume_90 < results_clipped.volume_50,
                                     'volume_50'] = results_clipped.volume_90
                 results_clipped.loc[results_clipped.volume_50 < results_clipped.volume_10,
                                     'volume_10'] = results_clipped.volume_50
-    
+                #Get quantile loss for given fold
                 result_10_clipped = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                        results_clipped.volume_10,
-                                        alpha = 0.1)
-    
+                                                      results_clipped.volume_10,
+                                                      alpha = 0.1)
                 result_50_clipped = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                        results_clipped.volume_50,
-                                        alpha = 0.5)
-    
+                                                      results_clipped.volume_50,
+                                                      alpha = 0.5)
                 result_90_clipped = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                        results_clipped.volume_90,
-                                        alpha = 0.9)
-    
+                                                      results_clipped.volume_90,
+                                                      alpha = 0.9)
                 #Append results from this fold
                 results_10_clipped.append([fold, result_10_clipped, num_boost_round_month])
                 results_50_clipped.append([fold, result_50_clipped, num_boost_round_month])
                 results_90_clipped.append([fold, result_90_clipped, num_boost_round_month])
-    
+                #Get competition metric
                 cv_result = 2 * (result_10_clipped +
                                  result_50_clipped +
                                  result_90_clipped) / 3
-
+                #Append the result from given fold-model iteration
                 cv_results.append([cv_result])
+            #Average results over different folds for given model iteration
             cv_result_avg_fold = np.mean(cv_results)
-
-            #Keep results from all quantiles and num boost rounds
-            results_10_clipped_all.append(results_10_clipped)
-            results_50_clipped_all.append(results_50_clipped)
-            results_90_clipped_all.append(results_90_clipped)
-
+            #Keep track of early stopping condition if result is poorer than
+            #in the previous early stopping check (early_stopping_step before)
             if cv_result_avg_fold > cv_result_avg_fold_prev:
                 num_prev_iters_better += 1
-                #cv_result_avg_fold_prev doesn't change, as the comparison is still to 
-                #this value that is the best value so far
             else:
+                #If new result is better, use new result in next early stopping
+                #check. Reset num_prev_iters_better to 0
                 cv_result_avg_fold_prev = cv_result_avg_fold
                 num_prev_iters_better = 0
-
-            print(f'Avg result all folds for {num_boost_round_month} trees:', cv_result_avg_fold)
+            print(f'Avg result all folds for {num_boost_round_month} trees:',
+                  cv_result_avg_fold)
+            #Append number of boosting iterations to average results
             cv_results_avg_fold.append([cv_result_avg_fold, num_boost_round_month])
+            #Update information when next early stopping will be evaluated
             num_boost_round_month += early_stopping_step
-        #Take into account if last values weren't the best ones
+
+        #######################################################################
+        #Early stopping/maximum number of iterations (num_boost_round) met
+        #for the selected month
+        #######################################################################
+        #Update results if last values weren't the best ones. Maximum value
+        #is chosen as the final value
         if num_prev_iters_better != 0:
             cv_results_avg_fold = cv_results_avg_fold[:-num_prev_iters_better]
         cv_results_all_months[month] = cv_results_avg_fold
 
-        results_10_clipped_all_months[month] = results_10_clipped_all
-        results_50_clipped_all_months[month] = results_50_clipped_all
-        results_90_clipped_all_months[month] = results_90_clipped_all
-
-    #Get best fit per month
+    ###########################################################################
+    #All months were trained. Get final results to return
+    ###########################################################################
+    #Get best fit per month with best number of iterations
     best_cv_early_stopping = []
     for month in cv_results_all_months.keys():    
         best_cv_early_stopping.append(cv_results_all_months[month][-1])
     best_cv_early_stopping = np.array(best_cv_early_stopping)
     #Average best fits over months
     result_final_avg = np.mean(best_cv_early_stopping[:, 0])
-    #Get optimal number of rounds for each month
+    #Get optimal number of rounds for each month separately
     num_rounds_months = list(best_cv_early_stopping[:, 1].astype('int'))
     return best_cv_early_stopping, result_final_avg, num_rounds_months
