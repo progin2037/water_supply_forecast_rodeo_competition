@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import lightgbm as lgb
 from sklearn.metrics import mean_pinball_loss
+import optuna
 from tqdm import tqdm
 
 from utils import get_quantiles_from_distr, all_distr_dict, distr_to_change
@@ -206,7 +207,7 @@ def lgbm_cv(train: pd.DataFrame,
         train_feat_dict (dict): Features to use for different months. Key
             indicates month and value the features
         params_dict (dict): LightGBM hyperparameters to use for different months.
-            Key indicates month and value a dictionary of hyperparameters
+            Key indicates month and value, a dictionary of hyperparameters
         categorical (list): Categorical features in the model
         min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
             for given site_id
@@ -459,3 +460,121 @@ def lgbm_cv(train: pd.DataFrame,
     #Get optimal number of rounds for each month separately
     num_rounds_months = list(best_cv_early_stopping[:, 1].astype('int'))
     return best_cv_early_stopping, result_final_avg, num_rounds_months
+
+def objective(trial: optuna.trial.Trial,
+              train: pd.DataFrame,
+              labels: pd.Series,
+              month: int,
+              years_cv: list,
+              year_range: bool,
+              train_feat: list,
+              categorical: list,
+              min_max_site_id: pd.DataFrame,
+              path_distr: str,
+              distr_perc: float,
+              num_boost_round: int,
+              num_boost_round_start: int,
+              early_stopping_rounds: int,
+              early_stopping_step: int) -> float:
+    """
+    Set logic for optuna hyperparameters tuning, set range of values for
+    different hyperparameters, append CV evaluation.
+    
+    Args:
+        trial (optuna.trial.Trial): A process of evaluating an objective
+            function. This object is passed to an objective function and
+            provides interfaces to get parameter suggestion, manage the trial’s
+            state, and set/get user-defined attributes of the trial
+            (https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html#optuna.trial.Trial)
+        train (pd.DataFrame): Whole training data before dividing into CV folds
+        labels (pd.Series): Labels corresponding to train data
+        month (int): Month to optimize hyperparameters for
+        years_cv (list): A list with test years for different CV folds
+        year_range (bool): Specifies if there could be many years in test data
+            (True) or just one test data per fold (False)
+        train_feat (list): Features to use for this month
+        categorical (list): Categorical features in the model
+        min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
+            for given site_id
+        path_distr (str): Path to values of distribution estimate parameters
+            per each site_id (without amendments to distributions. Amendments
+            are imported from utils)
+        distr_perc (float): How much importance is given for distribution
+            estimate. For 0.4 value, it's 40% (while LightGBM model is 60%)
+        num_boost_round (int): Maximum number of estimators used in LightGBM
+            models. Model could be stopped earlier if early stopping is met
+        num_boost_round_start (int): Number of estimators used in LightGBM
+            model after which early stopping criterion starts (could be seen
+            as the minimum number of model iterations)
+        early_stopping_rounds (int): How many times in a row early stopping can
+            be met before stopping training
+        early_stopping_step (int): Number of iterations when early stopping is
+            performed. 20 means that it's done every 20 iterations, i,e. after
+            100, 120, 140, ... iters
+    Returns:
+        best_cv_avg (float): Score for this optimization iteration
+    """
+    #Set repetitive parameters
+    BAGGING_FREQ = 50
+    OBJECTIVE = 'quantile'
+    METRIC = 'quantile'
+    VERBOSE = -1 
+    REG_ALPHA = 0
+    MIN_GAIN_TO_SPLIT = 0.0
+    FEATURE_FRACTION_SEED = 2112
+    MIN_SUM_HESSIAN_IN_LEAF = 0.001
+    SEED = 2112
+    #Set minimial number of columns to one less than the number of columns.
+    #0.001 is added to the result to deal with optuna approximation.
+    #Months 2, 3 and 4 were trained with a static 0.9 feature fraction
+    if month in [2, 3 ,4]:
+        feature_fraction_min = 0.9
+    else:
+        feature_fraction_min = ((len(train_feat) - 1) / len(train_feat)) + 0.001
+    #Set range of values for different hyperparameters
+    params = {'objective': OBJECTIVE,
+              'metric': METRIC,
+              'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1),
+              'max_depth': trial.suggest_int('max_depth', 5, 10),
+              'num_leaves': trial.suggest_int('num_leaves', 16, 128),
+              'lambda_l1': REG_ALPHA,
+              'lambda_l2': trial.suggest_float('lambda_l2', 0.0001, 10.0, log = True),
+              'min_gain_to_split': MIN_GAIN_TO_SPLIT,
+              'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+              'bagging_freq': BAGGING_FREQ,
+              'bagging_seed': FEATURE_FRACTION_SEED,
+              'feature_fraction': trial.suggest_float('feature_fraction',
+                                                      feature_fraction_min, 1.0,
+                                                      step = 1-feature_fraction_min),
+                                                      #0.9, 1.0, step = 0.1),
+              'feature_fraction_seed': FEATURE_FRACTION_SEED,
+              'max_bin': trial.suggest_int('max_bin', 200, 300),
+              'min_data_in_leaf': trial.suggest_int('min_data_in_leaf', 15, 25),
+              'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
+              'verbose': VERBOSE,
+              'seed': SEED}
+    #Change params to params_dict dictionary
+    params_dict = {month: params}
+    #Change features to dictionary
+    train_feat_dict = {month: train_feat}
+    #Change month type to list
+    month = [month]
+    #Perform CV calculation
+    best_cv_per_month, best_cv_avg, num_rounds_months = lgbm_cv(train,
+            labels,
+            num_boost_round,
+            num_boost_round_start,
+            early_stopping_rounds,
+            early_stopping_step,
+            month,
+            years_cv,
+            year_range,
+            train_feat_dict,
+            params_dict,
+            categorical,
+            min_max_site_id,
+            path_distr,
+            distr_perc)
+    trial.set_user_attr("num_boost_rounds_best",
+                        num_rounds_months[0]) 
+    return best_cv_avg
