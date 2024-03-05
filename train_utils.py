@@ -82,7 +82,7 @@ def save_models(issue_months: list,
     
     Args:
         issue_months (list): Different months to create models for. The months
-            are based on issue dates.
+            are based on issue dates
         lgb_models_10 (list): LightGBM models for 0.1 quantile. Should be in
             the same order as issue_months
         lgb_models_50 (list): LightGBM models for 0.5 quantile. Should be in
