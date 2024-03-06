@@ -164,7 +164,6 @@ train = get_aggs_month(train_monthly_naturalized_flow,
 #Create nat_flow_10 and nat_flow_11 for nat_flow_11_to_10_ratio creation
 cols = ['site_id', 'forecast_year', 'nat_flow']
 agg_col = 'nat_flow'
-#unique_months = train_monthly_naturalized_flow.month.unique()
 
 for month in [10, 11]:
     month_df = train_monthly_naturalized_flow.loc[train_monthly_naturalized_flow.month == month, cols].\
