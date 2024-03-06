@@ -36,21 +36,25 @@ The solution makes predictions based on the approach of creating LightGBM models
 ## How to run
 The solution was created using Python version 3.10.13.
 
+*Keep in mind that results won't be exactly the same as those from models/ repo directory when downloading data again, as some of the datasets could be updated (it happened with USGS streamflow).*
+
 1. Clone this repo.
-2. Create data/ directory within the repo. All data should be downloaded to this directory.
-3. Download data from the competition website https://www.drivendata.org/competitions/254/reclamation-water-supply-forecast-dev/data/. 
-4. Download additional data from the competition repo https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime.
+2. Install packages from requirements (`pip install -r requirements.txt`).
+3. Create data/ directory within the repo. All data should be downloaded to this directory.
+4. Download data from the competition website https://www.drivendata.org/competitions/254/reclamation-water-supply-forecast-dev/data/. 
+5. Download additional data from the competition repo https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime.
 	1. Clone the repo.
 	2. Replace hindcast_test_config.yml (https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime/blob/main/data_download/hindcast_test_config.yml)
 	with hindcast_test_config.yml from this repo (https://github.com/progin2037/water_supply_forecast_rodeo_competition/blob/main/hindcast_test_config.yml). 
 	3. Follow the instructions from the Data download section from the water-supply-forecast-rodeo-runtime repo (https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime?tab=readme-ov-file#data-download)
-	and download the data.
-		1. Data should be downloaded to the data/ directory from this repo.
-	4. Follow the instructions from the Requirements and installation section from Data reading, installing libraries from data_reading directory (pip install ./data_reading/)
-	(https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime/tree/main?tab=readme-ov-file#requirements-and-installation-1). Thanks to that, auxiliary libraries for
+	and download the data. It is, go to the cloned repo, install wsfr-download package: `pip install ./data_download/` and run `python -m wsfr_download bulk data_download/hindcast_test_config.yml`
+	to start the download. Installing wsfr-download requirements (`pip install -r ./data_download/requirements.txt`) isn't necessary, as required libraries were already installed in step 2.
+	4. If data was downloaded to water-supply-forecast-rodeo-runtime repo instead of the main repo water_supply_forecast_rodeo_competition, copy downloaded data to data/ directory from the main repo.
+	5. Follow the instructions from the Requirements and installation section from Data reading, installing wsfr-read package from data_reading directory (`pip install ./data_reading/`)
+	(https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime/tree/main?tab=readme-ov-file#requirements-and-installation-1). Thanks to that, auxiliary library for
 	reading data downloaded in the previous point could be used.
-5. Run data_processing.py.
-6. Run model_params.py.
-7. Run distribution_estimates.py.
-8. Run model_training.py.
-9. Run get_predictions.py.
+6. Run data_processing.py.
+7. Run model_params.py.
+8. Run distribution_estimates.py.
+9. Run model_training.py.
+10. Run get_predictions.py.
