@@ -59,7 +59,6 @@ def merge_usgs_streamflow(site_ids_unique: list,
     Args:
         site_ids_unique (list): Unique site_ids
         years (list): Years to iterate over
-        
     Results:
         streamflow (pd.DataFrame): Merged USGS streamflow data
         not_found_usgs (list): An auxiliary check of what data was missing for
@@ -93,7 +92,6 @@ def get_paths(path_dir: str,
     Args:
         path_dir (str): A main directory path
         extension (str): An extension of file names to iterate over
-        
     Returns:
         paths (list): All paths within given directory
     """
@@ -117,7 +115,6 @@ def read_snotel(dir_name: str) -> pd.DataFrame:
         dir_name (str): A directory with SNOTEL files. The algorithm will go through
             any subfolders coming from that directory to search for files. It is
             also a directory where one .csv file for all SNOTEL files is created.
-        
     Returns:
         snotel_df (pd.DataFrame): SNOTEL data transformed to one DataFrame
     """

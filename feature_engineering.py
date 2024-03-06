@@ -117,7 +117,6 @@ def get_aggs_month(df_aggs: pd.DataFrame,
             aggregate on first months.
     Returns:
         df_main (pd.DataFrame): The main DataFrame with appended columns
-        
     """
     #Add suffix to columns to aggregate on
     for feat in cols:
@@ -177,7 +176,6 @@ def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataF
             naturalized flow
         test_monthly_naturalized_flow (pd.DataFrame): test monthly
             naturalized flow
-            
     Returns:
         monthly_naturalized_flow (pd.DataFrame): merged monthly naturalized
             flow with some auxiliary features
@@ -209,11 +207,9 @@ def preprocess_snotel(snotel: pd.DataFrame,
     Args:
         snotel (pd.DataFrame): SNOTEL DataFrame
         sites_to_snotel_stations (pd.DataFrame): site_id-station mapping
-        
     Returns:
         snotel (pd.DataFrame): SNOTEL DataFrame with additional information
     """
-    
     #Add site_id to snotel
     sites_to_snotel_stations['stationTriplet'] =\
         sites_to_snotel_stations.stationTriplet.str.replace(':', '_')

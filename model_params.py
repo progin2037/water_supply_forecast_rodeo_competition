@@ -1,6 +1,6 @@
 import joblib
 
-#Set genaral LightGBM params the same for each month
+#Set general LightGBM hyperparameters the same for each month
 BAGGING_FREQ = 50
 OBJECTIVE = 'quantile'
 METRIC = 'quantile'
@@ -10,9 +10,20 @@ MIN_GAIN_TO_SPLIT = 0.0
 MIN_SUM_HESSIAN_IN_LEAF = 0.001
 FEATURE_FRACTION_SEED = 2112
 SEED = 2112
+#Keep all repetitive hyperparams in one dictionary
+joblib.dump([BAGGING_FREQ,
+             OBJECTIVE,
+             METRIC,
+             VERBOSE,
+             REG_ALPHA,
+             MIN_GAIN_TO_SPLIT,
+             MIN_SUM_HESSIAN_IN_LEAF,
+             FEATURE_FRACTION_SEED,
+             SEED],
+            'data\general_hyperparams.pkl')
 
-#Commented as this step is not necessary. Values from hyperparamater tuning are
-#already hardcoded below
+#Read hyperparameters tuning results. Commented as this step is not necessary,
+#values from hyperparamaters tuning are already hardcoded below
 '''
 #Read params from files
 print('Jan')

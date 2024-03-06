@@ -11,10 +11,6 @@ import time
 
 start = time.time()
 
-#Path to different distributions for different site_ids
-PATH_DISTR = 'data\distr_per_site_50_outliers_2_5_best'
-#Set importance for distribution in quantiles 0.1 and 0.9 calculation
-DISTR_PERC = 0.4
 #Set threshold for outliers removal. A good practise is to set z-score threshold
 #to 3 but based on data exploration, it's save to remove more outliers within
 #2.5 threshold

@@ -3,6 +3,7 @@ import numpy as np
 import lightgbm as lgb
 from sklearn.metrics import mean_pinball_loss
 import optuna
+import joblib
 from tqdm import tqdm
 
 from utils import get_quantiles_from_distr, all_distr_dict, distr_to_change
@@ -514,16 +515,10 @@ def objective(trial: optuna.trial.Trial,
     Returns:
         best_cv_avg (float): Score for this optimization iteration
     """
-    #Set repetitive parameters
-    BAGGING_FREQ = 50
-    OBJECTIVE = 'quantile'
-    METRIC = 'quantile'
-    VERBOSE = -1 
-    REG_ALPHA = 0
-    MIN_GAIN_TO_SPLIT = 0.0
-    FEATURE_FRACTION_SEED = 2112
-    MIN_SUM_HESSIAN_IN_LEAF = 0.001
-    SEED = 2112
+    #Set repetitive parameters created in model_params.py
+    BAGGING_FREQ, OBJECTIVE, METRIC, VERBOSE, REG_ALPHA, MIN_GAIN_TO_SPLIT,\
+        MIN_SUM_HESSIAN_IN_LEAF, FEATURE_FRACTION_SEED, SEED =\
+            joblib.load('data\general_hyperparams.pkl')
     #Set minimial number of columns to one less than the number of columns.
     #0.001 is added to the result to deal with optuna approximation.
     #Months 2, 3 and 4 were trained with a static 0.9 feature fraction
