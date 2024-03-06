@@ -46,6 +46,9 @@ The solution was created using Python version 3.10.13.
 	3. Follow the instructions from the Data download section from the water-supply-forecast-rodeo-runtime repo (https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime?tab=readme-ov-file#data-download)
 	and download the data.
 		1. Data should be downloaded to the data/ directory from this repo.
+	4. Follow the instructions from the Requirements and installation section from Data reading, installing libraries from data_reading directory (pip install ./data_reading/)
+	(https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime/tree/main?tab=readme-ov-file#requirements-and-installation-1). Thanks to that, auxiliary libraries for
+	reading data downloaded in the previous point could be used.
 5. Run data_processing.py.
 6. Run model_params.py.
 7. Run distribution_estimates.py.
