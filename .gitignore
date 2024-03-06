@@ -9,7 +9,6 @@
 
 #Documents
 *.docx
-*.txt
 
 #Python
 *.pyc
