@@ -158,12 +158,11 @@ class ReadAllData:
     A class that loads and stores all data.
     """
     #Main data
-    train = pd.read_csv('data/train.csv')
+    train = pd.read_csv('data/forecast_train.csv')
     meta = pd.read_csv('data/metadata.csv', dtype={"usgs_id": "string"})
     flow = pd.read_csv('data/train_monthly_naturalized_flow.csv')
     submission_format = pd.read_csv('data/submission_format.csv')
-    train_monthly_naturalized_flow = pd.read_csv('data/train_monthly_naturalized_flow.csv')
-    test_monthly_naturalized_flow = pd.read_csv('data/test_monthly_naturalized_flow.csv')
+    train_monthly_naturalized_flow = pd.read_csv('data/forecast_train_monthly_naturalized_flow.csv')
 
     site_ids_unique = list(train['site_id'].unique())
     years = [2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023]
@@ -180,7 +179,7 @@ class ReadAllData:
                  1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
                  2000, 2001, 2002, 2003, 2004, 2006, 2008, 2010, 2012, 2014,
                  2016, 2018, 2020, 2022,
-                 #test years
+                 #Hindcast test years
                  2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023]
     streamflow, not_found_usgs = merge_usgs_streamflow(site_ids_unique, years_all)
     
