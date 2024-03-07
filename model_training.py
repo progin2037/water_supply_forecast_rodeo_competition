@@ -17,7 +17,7 @@ RUN_HYPERPARAMS_TUNING = False
 RUN_TRAINING = True
 
 #Read data
-data = pd.read_pickle('data/train_test.pkl')
+data = pd.read_pickle('data/train_test_forecast.pkl')
 params_dict = joblib.load('data\lgbm_model_params.pkl')
 feat_dict = joblib.load('data\lgbm_model_feats.pkl')
 
@@ -33,7 +33,7 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
     #Read min-max values of volume per site_id
     min_max_site_id = pd.read_pickle('data\min_max_site_id.pkl')
     #Path to different distributions for different site_id
-    PATH_DISTR = 'data\distr_per_site_50_outliers_2_5_best'
+    PATH_DISTR = 'data\distr_per_site_forecast_50_outliers_2_5_best'
     #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
     #different months
     distr_perc_dict = {1: 0.6,

@@ -14,7 +14,7 @@ issue_months = [1, 2, 3, 4, 5, 6, 7]
 #or specific_date parameters
 lgb_models_10, lgb_models_50, lgb_models_90 = load_models(issue_months)
 #Read data
-data = pd.read_pickle('data/train_test.pkl')
+data = pd.read_pickle('data/train_test_forecast.pkl')
 #Read model features
 train_feat_dict = joblib.load('data\lgbm_model_feats.pkl')
 #Read min-max values of volume per site_id
@@ -24,7 +24,7 @@ min_max_site_id = pd.read_pickle('data\min_max_site_id.pkl')
 submission_format = pd.read_csv('data/submission_format.csv')
 
 #Path to different distributions for different site_id
-PATH_DISTR = 'data\distr_per_site_50_outliers_2_5_best'
+PATH_DISTR = 'data\distr_per_site_forecast_50_outliers_2_5_best'
 #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
 #different months
 distr_perc_dict = {1: 0.6,

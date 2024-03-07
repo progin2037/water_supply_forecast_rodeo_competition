@@ -50,7 +50,7 @@ for site_id in tqdm(site_ids_unique):
                   Ignoring the distribution and trying the next one.')
 
 #Save results
-with open("data\distr_per_site_50_outliers_2_5", "wb") as fp:
+with open("data\distr_per_site_forecast_50_outliers_2_5", "wb") as fp:
     pickle.dump(distr_results, fp)
 
 #Keep only best distribution fit for each site_id
@@ -60,7 +60,7 @@ distr_results_best = pd.DataFrame(distr_results).sort_values(2).drop(2, axis = 1
 distr_results_best = [[x[0], {x[1]: distr_param_values_to_dict(x[1], x[2])}]
                       for x in distr_results_best]
 #Save best results
-with open("data\distr_per_site_50_outliers_2_5_best", "wb") as fp:
+with open("data\distr_per_site_forecast_50_outliers_2_5_best", "wb") as fp:
     pickle.dump(distr_results_best, fp)
 
 end = time.time()

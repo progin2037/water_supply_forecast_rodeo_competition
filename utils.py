@@ -160,7 +160,6 @@ class ReadAllData:
     #Main data
     train = pd.read_csv('data/forecast_train.csv')
     meta = pd.read_csv('data/metadata.csv', dtype={"usgs_id": "string"})
-    flow = pd.read_csv('data/train_monthly_naturalized_flow.csv')
     submission_format = pd.read_csv('data/submission_format.csv')
     train_monthly_naturalized_flow = pd.read_csv('data/forecast_train_monthly_naturalized_flow.csv')
 
@@ -395,55 +394,35 @@ all_distr_dict = {'alpha': stats.alpha,
 #to get distributions with shape more similar to historical volume data.
 #distr_to_cahen list is in the following format:
 #site_id - distribution_name_in_scipy.stats - distribution_parameters
-distr_to_change = [['detroit_lake_inflow', #difficult
- {'genhalflogistic': {'c': 0.39601278743089885,
-   'loc': 269.8999999999513,
-   'scale': 211.60626582014518}}], 
- ['green_r_bl_howard_a_hanson_dam',
- {'johnsonsb': {'a': 0.9922733219147784,
-   'b': 1.391486959257222,
-   'loc': 68.18004303369229,
-   'scale': 571.7584985219695}}],
- ['merced_river_yosemite_at_pohono_bridge',
- {'beta': {'a': 1.7968466459666936,
-   'b': 4.195446964912868,
-   'loc': 69.24899835744957,
-   'scale': 938.6020615756767}}],
- ['missouri_r_at_toston',
- {'genhalflogistic': {'c': 0.4767471605902966,
-   'loc': 824.8996688182854,
-   'scale': 1353.3406193403919}}],
- ['owyhee_r_bl_owyhee_dam', #difficult
- {'gompertz': {'c': 1.476600133575328,
-   'loc': 47.69798389731497,
-   'scale': 583.7473756406009}}],
- ['pecos_r_nr_pecos',
- {'foldnorm': {'c': 1.229491340925117,
-   'loc': 7.698751672312962,
-   'scale': 30.173624877585638}}],
-['pueblo_reservoir_inflow', #difficult
- {'triang': {'c': 0.45231450053903366,
-   'loc': -44.34354026478837,
-   'scale': 713.9690190797062}}],
- ['ruedi_reservoir_inflow',
- {'foldnorm': {'c': 1.9268820444547488,
-   'loc': 50.29299937525448,
-   'scale': 40.06175616845559}}],
+distr_to_change = [['american_river_folsom_lake',
+ {'triang': {'c': 0.14735176184191567,
+   'loc': 68.5118551657541,
+   'scale': 3083.6967210503262}}], 
+    ['boysen_reservoir_inflow',
+ {'beta': {'a': 1.445163988847558,
+   'b': 1.8079262402776015,
+   'loc': 99.50963614564361,
+   'scale': 1286.4050012660773}}],
+   ['colville_r_at_kettle_falls',
+ {'rice': {'b': 0.5073357149979119,
+   'loc': 7.54800320713469,
+   'scale': 86.63249419657262}}],
+['missouri_r_at_toston',
+ {'genhalflogistic': {'c': 0.43573999884824266,
+   'loc': 857.2975054574381,
+   'scale': 1229.1703861049837}}],
+['owyhee_r_bl_owyhee_dam', #hard one
+ {'gompertz': {'c': 1.9258979823920839,
+   'loc': 47.69799999999867,
+   'scale': 730.0492988832123}}],
 ['san_joaquin_river_millerton_reservoir',
- {'beta': {'a': 1.5249599386479047,
-   'b': 6.478165192755336,
-   'loc': 249.50098743408654,
-   'scale': 5034.795891871441}}],
- ['sweetwater_r_nr_alcova',
- {'beta': {'a': 1.0633268850121746,
-   'b': 2.0028266424120917,
-   'loc': 7.584386775488245,
-   'scale': 160.82070423918464}}],
- ['virgin_r_at_virtin',
- {'johnsonsb': {'a': 1.0361313388285849,
-   'b': 0.763111560377552,
-   'loc': 14.65088252570607,
-   'scale': 173.52974301377873}}]]
+ {'triang': {'c': 0.10365871486236766,
+   'loc': 126.02676441491067,
+   'scale': 3141.7834575485103}}],
+['sweetwater_r_nr_alcova', #hard one
+ {'triang': {'c': 0.0522635575618193,
+   'loc': 5.661542030339158,
+   'scale': 166.89369023288407}}]]
 
 
 def get_quantiles_from_distr(data: pd.DataFrame,
