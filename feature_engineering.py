@@ -161,12 +161,10 @@ def get_aggs_month(df_aggs: pd.DataFrame,
     return df_main
 
 
-def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataFrame,
-                                        test_monthly_naturalized_flow: pd.DataFrame) -> pd.DataFrame:
+def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataFrame) -> pd.DataFrame:
     """
-    Merge train and test monthly naturalized flow, append issue dates and
-    shift by 1 month to be able to safely merge with other datasets without
-    looking into future.
+    Append issue dates and shift by 1 month to be able to safely merge with
+    other datasets without looking into future.
     General information on this dataset is in https://www.drivendata.org/competitions/254/reclamation-water-supply-forecast-dev/page/797/#antecedent-monthly-naturalized-flow.
     Data came from NRCS (https://www.nrcs.usda.gov/) and RFCs
     (https://water.weather.gov/ahps/rfc/rfc.php) sources.
@@ -180,10 +178,8 @@ def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataF
         monthly_naturalized_flow (pd.DataFrame): merged monthly naturalized
             flow with some auxiliary features
     """
-    #Merge train and test monthly naturalized flow
-    monthly_naturalized_flow =\
-        pd.concat([train_monthly_naturalized_flow, test_monthly_naturalized_flow])
-    monthly_naturalized_flow = monthly_naturalized_flow.\
+    #Sort values
+    monthly_naturalized_flow = train_monthly_naturalized_flow.\
         sort_values(['site_id', 'year', 'month']).reset_index(drop = True)
     #Get issue dates
     monthly_naturalized_flow['issue_date'] = pd.to_datetime\

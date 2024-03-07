@@ -143,8 +143,7 @@ train = get_aggs_month_day(streamflow,
                            month_since = 4)
 
 #Get monthly naturalized flow features 
-train_monthly_naturalized_flow = preprocess_monthly_naturalized_flow(dfs.train_monthly_naturalized_flow,
-                                                                     dfs.test_monthly_naturalized_flow)    
+train_monthly_naturalized_flow = preprocess_monthly_naturalized_flow(dfs.train_monthly_naturalized_flow)
 
 #Get naturalized flow from previous month
 train['nat_flow_prev'] = train.apply(lambda x: train_monthly_naturalized_flow.loc\
@@ -239,7 +238,7 @@ with open("data\issue_date_encoded", "wb") as fp:
     pickle.dump(issue_date_encoded, fp)
 
 #Save train and test data ready for modelling
-train.to_pickle('data/train_test.pkl')
+train.to_pickle('data/train_test_forecast.pkl')
 
 end = time.time()
 elapsed = end - start
