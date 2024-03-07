@@ -20,7 +20,7 @@ joblib.dump([BAGGING_FREQ,
              MIN_SUM_HESSIAN_IN_LEAF,
              FEATURE_FRACTION_SEED,
              SEED],
-            'data\general_hyperparams.pkl')
+            'data\general_hyperparams_forecast.pkl')
 
 #Read hyperparameters tuning results. Commented as this step is not necessary,
 #values from hyperparamaters tuning are already hardcoded below
@@ -201,7 +201,7 @@ params_dict = {1: params_1,
                7: params_7}
 
 #Save params to .pkl
-joblib.dump(params_dict, 'data\lgbm_model_params.pkl')
+joblib.dump(params_dict, 'data\lgbm_model_params_forecast.pkl')
 
 #Set different features for each month
 #Jan
@@ -209,20 +209,20 @@ train_feat_1 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_ye
                 'nat_flow_11_to_10_ratio']
 #Feb
 train_feat_2 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'discharge_cfs_mean_std', 'longitude']
+                'discharge_cfs_mean_since_Oct_std', 'longitude']
 #Mar
 train_feat_3 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'discharge_cfs_mean_std', 'longitude']
+                'discharge_cfs_mean_since_Oct_std', 'longitude']
 #Apr
 train_feat_4 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'discharge_cfs_mean_std', 'longitude']
+                'discharge_cfs_mean_since_Oct_std', 'longitude']
 #May
 train_feat_5 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'discharge_cfs_mean_std', 'longitude', 'WTEQ_DAILY_Apr_mean',
+                'discharge_cfs_mean_since_Oct_std', 'longitude', 'WTEQ_DAILY_Apr_mean',
                 'discharge_cfs_mean_Apr_mean']
 #Jun
 train_feat_6 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'discharge_cfs_mean_std', 'longitude', 'WTEQ_DAILY_Apr_mean',
+                'discharge_cfs_mean_since_Oct_std', 'longitude', 'WTEQ_DAILY_Apr_mean',
                 'discharge_cfs_mean_Apr_mean', 'nat_flow_Apr_mean']
 #Jul
 train_feat_7 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
@@ -238,4 +238,4 @@ train_feat_dict = {1: train_feat_1,
                    6: train_feat_6,
                    7: train_feat_7}
 #Save features to .pkl
-joblib.dump(train_feat_dict, 'data\lgbm_model_feats.pkl')
+joblib.dump(train_feat_dict, 'data\lgbm_model_feats_forecast.pkl')

@@ -16,9 +16,9 @@ lgb_models_10, lgb_models_50, lgb_models_90 = load_models(issue_months)
 #Read data
 data = pd.read_pickle('data/train_test_forecast.pkl')
 #Read model features
-train_feat_dict = joblib.load('data\lgbm_model_feats.pkl')
+train_feat_dict = joblib.load('data\lgbm_model_feats_forecast.pkl')
 #Read min-max values of volume per site_id
-min_max_site_id = pd.read_pickle('data\min_max_site_id.pkl')
+min_max_site_id = pd.read_pickle('data\min_max_site_id_forecast.pkl')
 
 #Read submission example
 submission_format = pd.read_csv('data/submission_format.csv')

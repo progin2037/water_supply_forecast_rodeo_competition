@@ -45,7 +45,7 @@ train = train.iloc[~train.index.isin(zscores_outliers.index)].reset_index(drop =
 #It's used for all years with data as there isn't much data, so even
 #potentially inacurate old volumes before YEAR_SINCE are used.
 min_max_site_id = train.groupby(['site_id'])['volume'].agg(['min', 'max'])
-min_max_site_id.to_pickle('data\min_max_site_id.pkl')
+min_max_site_id.to_pickle('data\min_max_site_id_forecast.pkl')
 
 #Get test rows
 test_rows_to_add = get_test_rows(dfs.site_ids_unique,
