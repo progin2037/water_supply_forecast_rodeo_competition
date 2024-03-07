@@ -16,7 +16,7 @@ start = time.time()
 #2.5 threshold
 OUT_THRES = 2.5
 #Keep data only since given interval
-YEAR_SINCE = 1930
+YEAR_SINCE = 1965
 
 
 ###############################################################################
@@ -112,10 +112,6 @@ streamflow['month'] = streamflow_dates_split.str[1].astype('int')
 streamflow['day'] = streamflow_dates_split.str[2].astype('int')
 
 #discharge_cfs_mean_std
-#[REMARK] Keep in mind that for model creation, data since December was used
-#(month_since = 12) but in Hindcast test pipeline there wasn't any month
-#restriction (month_since = 10; earliest possible), so the results on the
-#Leaderboard are a little different due to different processing.
 train = get_aggs_month_day(streamflow,
                            train,
                            ['discharge_cfs_mean'],
@@ -125,6 +121,16 @@ train = get_aggs_month_day(streamflow,
                            'year',
                            suffix = '',
                            month_since = 12)
+#discharge_cfs_mean_since_Oct_std
+train = get_aggs_month_day(streamflow,
+                           train,
+                           ['discharge_cfs_mean'],
+                           ['std'],
+                           issue_months,
+                           issue_days,
+                           'year',
+                           suffix = '_since_Oct',
+                           month_since = 10)
 #discharge_cfs_mean_Apr_mean
 train = get_aggs_month_day(streamflow,
                            train,
