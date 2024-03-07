@@ -34,8 +34,15 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
     min_max_site_id = pd.read_pickle('data\min_max_site_id.pkl')
     #Path to different distributions for different site_id
     PATH_DISTR = 'data\distr_per_site_50_outliers_2_5_best'
-    #Set importance for distribution in quantiles 0.1 and 0.9 calculation
-    DISTR_PERC = 0.4
+    #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
+    #different months
+    distr_perc_dict = {1: 0.6,
+                       2: 0.45,
+                       3: 0.4,
+                       4: 0.3,
+                       5: 0.25,
+                       6: 0.2,
+                       7: 0.1}
     #Use many years in a fold or not
     YEAR_RANGE = True
     #Initiate early stopping from this iteration
@@ -81,7 +88,7 @@ if RUN_CV == True:
                 categorical,
                 min_max_site_id,
                 PATH_DISTR,
-                DISTR_PERC)
+                distr_perc_dict)
     print('CV result avg over months:', best_cv_avg)
     print('CV results per month with number of iters:', best_cv_per_month)
     print('Number of iters per month:', num_rounds_months)
@@ -111,7 +118,7 @@ if RUN_HYPERPARAMS_TUNING == True:
                                                categorical,
                                                min_max_site_id,
                                                PATH_DISTR,
-                                               DISTR_PERC,
+                                               distr_perc_dict,
                                                NUM_BOOST_ROUND,
                                                NUM_BOOST_ROUND_START,
                                                EARLY_STOPPING_ROUNDS,

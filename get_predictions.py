@@ -25,8 +25,15 @@ submission_format = pd.read_csv('data/submission_format.csv')
 
 #Path to different distributions for different site_id
 PATH_DISTR = 'data\distr_per_site_50_outliers_2_5_best'
-#Set importance for distribution in quantiles 0.1 and 0.9 calculation
-DISTR_PERC = 0.4
+#Set importance for distribution in quantiles 0.1 and 0.9 calculation for
+#different months
+distr_perc_dict = {1: 0.6,
+                   2: 0.45,
+                   3: 0.4,
+                   4: 0.3,
+                   5: 0.25,
+                   6: 0.2,
+                   7: 0.1}
 
 #Keep only test data
 test = data[data.set == 'test'].reset_index(drop = True)
@@ -90,9 +97,15 @@ test.loc[test.volume_50 < test.volume_10_lgbm, 'volume_10_lgbm'] = test.volume_5
 test.loc[test.volume_90_distr < test.volume_50, 'volume_90_distr'] = test.volume_50
 test.loc[test.volume_50 < test.volume_10_distr, 'volume_10_distr'] = test.volume_50
 
-#Get weighted average from distribution and models for Q0.1 and Q0.9
-test['volume_10'] = DISTR_PERC * test.volume_10_distr + (1 - DISTR_PERC) * test.volume_10_lgbm
-test['volume_90'] = DISTR_PERC * test.volume_90_distr + (1 - DISTR_PERC) * test.volume_90_lgbm
+#Get weighted average from distribution and models for Q0.1 and Q0.9. Do it
+#separately for different months as distribution percentage varies depending on
+#months
+for month in issue_months:
+    distr_perc = distr_perc_dict[month]
+    test.loc[test.month == month, 'volume_10'] =\
+        distr_perc * test.volume_10_distr + (1 - distr_perc) * test.volume_10_lgbm
+    test.loc[test.month == month, 'volume_90'] =\
+        distr_perc * test.volume_90_distr + (1 - distr_perc) * test.volume_90_lgbm
 
 #Append predicted volumes to submission_format and save results
 results = submission_format.copy()

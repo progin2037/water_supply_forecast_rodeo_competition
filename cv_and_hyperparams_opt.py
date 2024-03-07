@@ -182,7 +182,7 @@ def lgbm_cv(train: pd.DataFrame,
             categorical: list,
             min_max_site_id: pd.DataFrame,
             path_distr: str,
-            distr_perc: float) -> tuple[np.array, float, list]:
+            distr_perc_dict: dict) -> tuple[np.array, float, list]:
     """
     Run LightGBM CV with early stopping, get distribution estimates and
     average the results. Perform additional clipping to model predictions.
@@ -215,8 +215,10 @@ def lgbm_cv(train: pd.DataFrame,
         path_distr (str): Path to values of distribution estimate parameters
             per each site_id (without amendments to distributions. Amendments
             are imported from utils)
-        distr_perc (float): How much importance is given for distribution
-            estimate. For 0.4 value, it's 40% (while LightGBM model is 60%)
+        distr_perc_dict (dict): How much importance is given for distribution
+            estimate. For 0.4 value, it's 40% (while LightGBM model is 60%).
+            Different months use different distribution percentage (1 for
+            January, 2 for February, ..., 7 for July)
     Returns:
         best_cv_early_stopping (np.array): CV results from different months with
             number of model iterations for each month
@@ -240,6 +242,8 @@ def lgbm_cv(train: pd.DataFrame,
     ###########################################################################    
     for month_idx, month in tqdm(enumerate(issue_months)):
         print(f'\Month: {month}')
+        #Get distribution percentage to use for given month
+        distr_perc = distr_perc_dict[month]
         #Initialize variables for the month
         #First evaluation done after num_boost_round_start iters
         num_boost_round_month = num_boost_round_start
@@ -472,7 +476,7 @@ def objective(trial: optuna.trial.Trial,
               categorical: list,
               min_max_site_id: pd.DataFrame,
               path_distr: str,
-              distr_perc: float,
+              distr_perc_dict: dict,
               num_boost_round: int,
               num_boost_round_start: int,
               early_stopping_rounds: int,
@@ -500,8 +504,10 @@ def objective(trial: optuna.trial.Trial,
         path_distr (str): Path to values of distribution estimate parameters
             per each site_id (without amendments to distributions. Amendments
             are imported from utils)
-        distr_perc (float): How much importance is given for distribution
-            estimate. For 0.4 value, it's 40% (while LightGBM model is 60%)
+        distr_perc_dict (dict): How much importance is given for distribution
+            estimate. For 0.4 value, it's 40% (while LightGBM model is 60%).
+            Different months use different distribution percentage (1 for
+            January, 2 for February, ..., 7 for July)
         num_boost_round (int): Maximum number of estimators used in LightGBM
             models. Model could be stopped earlier if early stopping is met
         num_boost_round_start (int): Number of estimators used in LightGBM
@@ -570,7 +576,7 @@ def objective(trial: optuna.trial.Trial,
                 categorical,
                 min_max_site_id,
                 path_distr,
-                distr_perc)
+                distr_perc_dict)
     trial.set_user_attr("num_boost_rounds_best",
                         num_rounds_months[0]) 
     return best_cv_avg
