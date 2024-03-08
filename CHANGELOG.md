@@ -2,6 +2,7 @@ The changelog was created to keep track of most important changes between differ
 
 # Changes between Hindcast Stage and Forecast Stage
 
+* added interval coverage
 * updated features to train
 * updated distribution estimates based on full available data (with outliers removal)
 * added new competition data that include Hindcast test years with their observed values

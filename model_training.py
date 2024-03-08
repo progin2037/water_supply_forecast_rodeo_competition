@@ -23,7 +23,8 @@ feat_dict = joblib.load('data\lgbm_model_feats_forecast.pkl')
 
 #Different models are created for different months
 issue_months = [1, 2, 3, 4, 5, 6, 7]
-#Number of boost rounds for following months. Taken from hyparparameters optimization
+#Number of boost rounds for following months. Taken from hyparparameters
+#optimization. IF CV is ran, it is overwritten with CV results
 num_rounds_months = [220, 160, 300, 420, 480, 1000, 900]
 #Set eval to show training results every EVAL step
 EVAL = 100
@@ -73,25 +74,26 @@ if RUN_CV == True:
     #Maximum number of LightGBM model iterations
     NUM_BOOST_ROUND = 1000
     #Run CV
-    best_cv_per_month, best_cv_avg, num_rounds_months =\
-        lgbm_cv(train,
-                labels,
-                NUM_BOOST_ROUND,
-                NUM_BOOST_ROUND_START,
-                EARLY_STOPPING_ROUNDS,
-                EARLY_STOPPING_STEP,
-                issue_months,
-                years_cv,
-                YEAR_RANGE,
-                feat_dict,
-                params_dict,
-                categorical,
-                min_max_site_id,
-                PATH_DISTR,
-                distr_perc_dict)
+    best_cv_per_month, best_cv_avg, num_rounds_months,\
+        best_interval_early_stopping = lgbm_cv(train,
+                                               labels,
+                                               NUM_BOOST_ROUND,
+                                               NUM_BOOST_ROUND_START,
+                                               EARLY_STOPPING_ROUNDS,
+                                               EARLY_STOPPING_STEP,
+                                               issue_months,
+                                               years_cv,
+                                               YEAR_RANGE,
+                                               feat_dict,
+                                               params_dict,
+                                               categorical,
+                                               min_max_site_id,
+                                               PATH_DISTR,
+                                               distr_perc_dict)
     print('CV result avg over months:', best_cv_avg)
     print('CV results per month with number of iters:', best_cv_per_month)
     print('Number of iters per month:', num_rounds_months)
+    print('Interval coverage per month:', best_interval_early_stopping)
 
 #Hyperparameters tuning
 if RUN_HYPERPARAMS_TUNING == True:

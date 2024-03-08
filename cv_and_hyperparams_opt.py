@@ -182,7 +182,7 @@ def lgbm_cv(train: pd.DataFrame,
             categorical: list,
             min_max_site_id: pd.DataFrame,
             path_distr: str,
-            distr_perc_dict: dict) -> tuple[np.array, float, list]:
+            distr_perc_dict: dict) -> tuple[np.array, float, list, np.array]:
     """
     Run LightGBM CV with early stopping, get distribution estimates and
     average the results. Perform additional clipping to model predictions.
@@ -224,6 +224,8 @@ def lgbm_cv(train: pd.DataFrame,
             number of model iterations for each month
         result_final_avg (float): CV results averaged over different months
         num_rounds_months (list): Number of model iterations for each month
+        best_interval_early_stopping (np.array): interval coverage results from
+            different month for num_rounds_months iterations
     """
     ###########################################################################
     #Global parameters and variables initialization
@@ -232,7 +234,8 @@ def lgbm_cv(train: pd.DataFrame,
     results_10_clipped = []
     results_50_clipped = []
     results_90_clipped = []
-    cv_results_all_months = dict()
+    cv_results_all_months = dict() #CV results from different months
+    results_coverage_all_months = dict() #interval coverage from different months
     results_10 = []
     results_50 = []
     results_90 = []
@@ -241,7 +244,7 @@ def lgbm_cv(train: pd.DataFrame,
     #Iterate over months. Train one month at a time
     ###########################################################################    
     for month_idx, month in tqdm(enumerate(issue_months)):
-        print(f'\Month: {month}')
+        print(f'\nMonth: {month}')
         #Get distribution percentage to use for given month
         distr_perc = distr_perc_dict[month]
         #Initialize variables for the month
@@ -255,6 +258,8 @@ def lgbm_cv(train: pd.DataFrame,
         #All [avg fold result-number of LightGBM iterations] from given month.
         #All LGBM iters after each early_stopping_step have a row in the list
         cv_results_avg_fold = []
+        #Similarly for interval coverage
+        results_coverage_avg_fold = []
         #Quantile 0.5 models for newest fold results
         lgb_models_50 = dict()
         #Quantile 0.1 models for newest fold results
@@ -271,6 +276,7 @@ def lgbm_cv(train: pd.DataFrame,
             results_10_clipped = []
             results_50_clipped = []
             results_90_clipped = []
+            results_coverage = []
             cv_results = []
 
             ###################################################################
@@ -424,8 +430,16 @@ def lgbm_cv(train: pd.DataFrame,
                                  result_90_clipped) / 3
                 #Append the result from given fold-model iteration
                 cv_results.append([cv_result])
+                #Get interval coverage for given month
+                different_volumes = ['volume_10', 'volume_50', 'volume_90']
+                result_coverage =\
+                    interval_coverage(np.array(labels[test_cv_idxs[fold]]),
+                                      np.array(results_clipped[different_volumes]))
+                results_coverage.append(result_coverage)
             #Average results over different folds for given model iteration
             cv_result_avg_fold = np.mean(cv_results)
+            #Do the same for interval coverage
+            result_coverage_avg_fold = np.mean(results_coverage)
             #Keep track of early stopping condition if result is poorer than
             #in the previous early stopping check (early_stopping_step before)
             if cv_result_avg_fold > cv_result_avg_fold_prev:
@@ -437,8 +451,14 @@ def lgbm_cv(train: pd.DataFrame,
                 num_prev_iters_better = 0
             print(f'Avg result all folds for {num_boost_round_month} trees:',
                   cv_result_avg_fold)
+            print(f'Avg interval coverage all folds for {num_boost_round_month} trees:',
+                  result_coverage_avg_fold)
             #Append number of boosting iterations to average results
-            cv_results_avg_fold.append([cv_result_avg_fold, num_boost_round_month])
+            cv_results_avg_fold.append([cv_result_avg_fold,
+                                        num_boost_round_month])
+            #Do the same for interval coverage
+            results_coverage_avg_fold.append([result_coverage_avg_fold,
+                                              num_boost_round_month])
             #Update information when next early stopping will be evaluated
             num_boost_round_month += early_stopping_step
 
@@ -450,8 +470,10 @@ def lgbm_cv(train: pd.DataFrame,
         #is chosen as the final value
         if num_prev_iters_better != 0:
             cv_results_avg_fold = cv_results_avg_fold[:-num_prev_iters_better]
+            results_coverage_avg_fold =\
+                results_coverage_avg_fold[:-num_prev_iters_better]
         cv_results_all_months[month] = cv_results_avg_fold
-
+        results_coverage_all_months[month] = results_coverage_avg_fold
     ###########################################################################
     #All months were trained. Get final results to return
     ###########################################################################
@@ -464,7 +486,13 @@ def lgbm_cv(train: pd.DataFrame,
     result_final_avg = np.mean(best_cv_early_stopping[:, 0])
     #Get optimal number of rounds for each month separately
     num_rounds_months = list(best_cv_early_stopping[:, 1].astype('int'))
-    return best_cv_early_stopping, result_final_avg, num_rounds_months
+    #Get interval coverage from the best iteration
+    best_interval_early_stopping = []
+    for month in cv_results_all_months.keys():
+        best_interval_early_stopping.append(results_coverage_all_months[month][-1])    
+    best_interval_early_stopping = np.array(best_interval_early_stopping)[:, 0]
+    return best_cv_early_stopping, result_final_avg, num_rounds_months,\
+        best_interval_early_stopping
 
 def objective(trial: optuna.trial.Trial,
               train: pd.DataFrame,
@@ -524,7 +552,7 @@ def objective(trial: optuna.trial.Trial,
     #Set repetitive parameters created in model_params.py
     BAGGING_FREQ, OBJECTIVE, METRIC, VERBOSE, REG_ALPHA, MIN_GAIN_TO_SPLIT,\
         MIN_SUM_HESSIAN_IN_LEAF, FEATURE_FRACTION_SEED, SEED =\
-            joblib.load('data\general_hyperparams.pkl')
+            joblib.load('data\general_hyperparams_forecast.pkl')
     #Set minimial number of columns to one less than the number of columns.
     #0.001 is added to the result to deal with optuna approximation.
     #Months 2, 3 and 4 were trained with a static 0.9 feature fraction
@@ -561,22 +589,44 @@ def objective(trial: optuna.trial.Trial,
     #Change month type to list
     month = [month]
     #Perform CV calculation
-    best_cv_per_month, best_cv_avg, num_rounds_months =\
-        lgbm_cv(train,
-                labels,
-                num_boost_round,
-                num_boost_round_start,
-                early_stopping_rounds,
-                early_stopping_step,
-                month,
-                years_cv,
-                year_range,
-                train_feat_dict,
-                params_dict,
-                categorical,
-                min_max_site_id,
-                path_distr,
-                distr_perc_dict)
-    trial.set_user_attr("num_boost_rounds_best",
-                        num_rounds_months[0]) 
+    best_cv_per_month, best_cv_avg, num_rounds_months,\
+        best_interval_early_stopping = lgbm_cv(train,
+                                               labels,
+                                               num_boost_round,
+                                               num_boost_round_start,
+                                               early_stopping_rounds,
+                                               early_stopping_step,
+                                               month,
+                                               years_cv,
+                                               year_range,
+                                               train_feat_dict,
+                                               params_dict,
+                                               categorical,
+                                               min_max_site_id,
+                                               path_distr,
+                                               distr_perc_dict)
+    trial.set_user_attr("num_boost_rounds_best", num_rounds_months[0])
+    trial.set_user_attr("interval_coverage", best_interval_early_stopping[0])
     return best_cv_avg
+
+def interval_coverage(actual: np.ndarray,
+                      predicted: np.ndarray) -> float:
+    """
+    Calculates interval coverage for quantile predictions. Assumes at least two
+    columns in `predicted`, and that the first column is the lower bound of
+    the interval, and the last column is the upper bound of the interval.
+    Taken from https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime/blob/main/scoring/score.py.
+
+    Args:
+        actual (np.ndarray): Array of actual values (labels)
+        predicted (np.ndarray): Array of predicted values
+    Returns:
+        interval_result (float): Interval coverage (proportion of predictions
+            that fall within lower and upper bound)
+    """
+    # Use ravel to reshape to 1D arrays.
+    lower = predicted[:, 0].ravel()
+    upper = predicted[:, -1].ravel()
+    actual = actual.ravel()
+    interval_result = np.average((lower <= actual) & (actual <= upper))
+    return interval_result
