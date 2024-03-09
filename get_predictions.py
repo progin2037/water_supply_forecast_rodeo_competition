@@ -9,12 +9,14 @@ import time
 
 start = time.time()
 
+#Add path for test data. Forecast stage doesn't use test data, so it has
+#to be constructed, for example as a sample from the train set
+TEST_DATA_PATH = ''
+#Get months for which predictions will be made
 issue_months = [1, 2, 3, 4, 5, 6, 7]
 #Load models. For loading models not created today, use read_models_from_repo
 #or specific_date parameters
 lgb_models_10, lgb_models_50, lgb_models_90 = load_models(issue_months)
-#Read data
-data = pd.read_pickle('data/train_test_forecast.pkl')
 #Read model features
 train_feat_dict = joblib.load('data\lgbm_model_feats_forecast.pkl')
 #Read min-max values of volume per site_id
@@ -28,15 +30,27 @@ PATH_DISTR = 'data\distr_per_site_forecast_50_outliers_2_5_best'
 #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
 #different months
 distr_perc_dict = {1: 0.6,
-                   2: 0.45,
+                   2: 0.4,
                    3: 0.4,
                    4: 0.3,
                    5: 0.25,
                    6: 0.2,
                    7: 0.1}
 
-#Keep only test data
-test = data[data.set == 'test'].reset_index(drop = True)
+if TEST_DATA_PATH == '':
+    #If test data isn't specified, get just extract for train data to test if
+    #the testing loop works
+    #Read train data
+    data = pd.read_pickle('data/train_test_forecast.pkl')
+    #Get sample of train data
+    test = data.sample(100, random_state = 100).reset_index(drop = True)
+else:
+    #If test data was specified, read this data (use read_csv if it's .csv)
+    try:
+        test = pd.read_pickle(TEST_DATA_PATH)
+    except:
+        test = pd.read_csv(TEST_DATA_PATH)
+
 #Change categorical data types
 test = to_categorical(['site_id'], test)
 
@@ -107,11 +121,9 @@ for month in issue_months:
     test.loc[test.month == month, 'volume_90'] =\
         distr_perc * test.volume_90_distr + (1 - distr_perc) * test.volume_90_lgbm
 
-#Append predicted volumes to submission_format and save results
-results = submission_format.copy()
-results = pd.merge(results.drop(['volume_10', 'volume_50', 'volume_90'], axis = 1),
-                   test[['site_id', 'issue_date', 'volume_10', 'volume_50', 'volume_90']])
-results.to_csv('results/results.csv', index = False)
+#Keep site_id, issue_date and predictions
+results = test[['site_id', 'issue_date', 'volume_10', 'volume_50', 'volume_90']]
+results.to_csv('results/results_forecast.csv', index = False)
 
 end = time.time()
 elapsed = end - start
