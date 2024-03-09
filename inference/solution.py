@@ -20,30 +20,47 @@ def preprocess(src_dir: Path, data_dir: Path, preprocessed_dir: Path) -> dict[Ha
     models = dict()
     for quantile in [10, 50, 90]:
         for month in [1, 2, 3, 4, 5, 6, 7]:
-            model_path = src_dir / f'models/lgbm_{quantile}_{month}_month_2023_12_21.pkl'
+            model_path = src_dir / f'models/lgbm_{quantile}_{month}_month_2024_01_11.pkl'
             models[f'q_{quantile}_{month}_month'] = pd.read_pickle(model_path)
     
     #Read all distributions to use
     with open(src_dir / "all_distr_dict", "rb") as fp:
         all_distr_dict = pickle.load(fp)    
     #Read fitted distributions to train volume. Distribution was fitted per each site_id
-    with open(src_dir / "distr_per_site_50_outliers_2_5_best", "rb") as fp:
+    with open(src_dir / "distr_per_site_forecast_50_outliers_2_5_best", "rb") as fp:
         distr_results = pickle.load(fp)
     #Read amendments to distributions
-    with open(src_dir / "distr_amendments", "rb") as fp:
+    with open(src_dir / "distr_amendments_forecast", "rb") as fp:
         distr_to_change = pickle.load(fp)
     #Read issue date encoding
     with open(src_dir / "issue_date_encoded", "rb") as fp:
         issue_date_encoded = pickle.load(fp)
     #Read min and max volume values per site_id
-    min_max_site_id = pd.read_pickle(src_dir / "min_max_site_id.pkl")
+    min_max_site_id = pd.read_pickle(src_dir / "min_max_site_id_forecast.pkl")
 
+    #Set how much importance should be given for distribution for different months.
+    #For Q0.1 and Q0.9 quantiles, results will be calculated as a weighted average
+    #of LightGBM model and historical data distribution.
+    #The first number of the dictionary stands for month, the second
+    #one, for distribution percentage in the weighted average.
+    distr_perc_dict = {1: 0.6,
+                       2: 0.45,
+                       3: 0.4,
+                       4: 0.3,
+                       5: 0.25,
+                       6: 0.2,
+                       7: 0.1}
+    #[REMARK]
+    #February data uses 0.45 distribution percentage, though it used 0.4 for training. It
+    #doesn't change much, only that distribution have a little bigger weight for real-time
+    #predictions.
     return {"models": models,
             "distr_results": distr_results,
             "distr_to_change": distr_to_change,
             "issue_date_encoded": issue_date_encoded,
             "all_distr_dict": all_distr_dict,
-            "min_max_site_id": min_max_site_id}
+            "min_max_site_id": min_max_site_id,
+            "distr_perc_dict": distr_perc_dict}
 
 
 def predict(
@@ -55,7 +72,15 @@ def predict(
     preprocessed_dir: Path,
 ) -> tuple[float, float, float]:
 
-    DISTR_PERC = 0.4 #Set how much importance should be given for distribution
+    #Get month
+    month = int(issue_date[5:7])
+    #Get month_day
+    issue_month_day = issue_date[5:]
+    #Get year
+    year = issue_date[:4]
+
+    #Choose distribution percentage for this month
+    distr_perc = assets['distr_perc_dict'][month]
 
     #Get longitude
     site_metadata_df = read_metadata()
@@ -69,7 +94,7 @@ def predict(
         monthly_naturalized_flow.reset_index(inplace = True)
         #Get latest value 
         nat_flow_prev = monthly_naturalized_flow['volume'].iloc[-1]
-        #Get average volume from data since April
+        #Get average volume from date since April
         nat_flow_Apr_mean = monthly_naturalized_flow.loc[(monthly_naturalized_flow.month >= 4) &
                                                          (monthly_naturalized_flow.month < 10),
                                                          'volume'].mean()
@@ -100,23 +125,16 @@ def predict(
                     paths.append(os.path.join(root, file))
         return paths
     try:
-        year = issue_date[:4]
         #Get all paths from SNOTEL directory
         snotel_paths = get_paths(data_dir / 'snotel/', '.csv')
-        #logger.info('snotel_paths done')
-        #logger.info(snotel_paths[0])
         
         snotel_paths = pd.Series(snotel_paths)
 
         #Keep only SNOTEL daily data
         snotel_paths_meta = snotel_paths[snotel_paths.str.contains('station_metadata|sites_to_snotel_stations')]
-        #logger.info('snotel_paths_meta done')
-        #logger.info(snotel_paths_meta.iloc[0])
         snotel_paths_data = snotel_paths[~snotel_paths.index.isin(snotel_paths_meta.index)]
         #Split paths by '/'
         snotel_paths_data_split = snotel_paths_data.str.split('/')
-        #logger.info('split slash done')
-        #logger.info(snotel_paths_data_split.iloc[0])
 
         #Read sites_to_snotel_stations
         sites_to_snotel_stations = pd.read_csv(data_dir / 'snotel\sites_to_snotel_stations.csv')
@@ -124,17 +142,11 @@ def predict(
         sites_to_snotel_stations = sites_to_snotel_stations[sites_to_snotel_stations.site_id == site_id]
         #Change stations format
         sites_to_snotel_stations['stationTriplet'] = sites_to_snotel_stations.stationTriplet.str.replace(':', '_')
-        #logger.info('changed station format')
-        #logger.info(sites_to_snotel_stations.iloc[0])
         
         #Get years and stations from paths
         snotel_paths_years = snotel_paths_data_split.str[-2].str[2:]
-        #logger.info('added snotel_paths_years')
-        #logger.info(snotel_paths_years.iloc[0])
         
         snotel_paths_stations = snotel_paths_data_split.str[-1].str.rstrip('.csv')
-        #logger.info('added snotel_paths_stations')
-        #logger.info(snotel_paths_stations.iloc[0])
 
         #Get idxs of stations and years that match current data point
         idx_station = snotel_paths_stations[snotel_paths_stations.isin(sites_to_snotel_stations.stationTriplet)].index
@@ -185,24 +197,28 @@ def predict(
     #Get USGS streamflow data:
     try:
         streamflow = read_usgs_streamflow_data(site_id, issue_date)
-        #Get std value
-        discharge_cfs_mean_std = streamflow['discharge_cfs_mean'].std()
+        #Get std value since Oct
+        discharge_cfs_mean_since_Oct_std = streamflow['discharge_cfs_mean'].std()
         #Get month
         streamflow['month'] = streamflow.datetime.dt.month
+        #Get std value since Dec. For July prediction for which this variable is
+        #used, it seems that Oct and Nov have too weak prediction power.
+        discharge_cfs_mean_std = streamflow.loc[(streamflow.month >= 12) |
+                                                (streamflow.month <= 7),
+                                                'discharge_cfs_mean'].std()
 
         #Get average value since April
         discharge_cfs_mean_Apr_mean =\
             streamflow.loc[(streamflow.month >= 4) & (streamflow.month < 10), 'discharge_cfs_mean'].mean()
     except Exception as e:
+        #Fill values with nans
         logger.info(f"USGS streamflow wasn't properly processed on {issue_date} for {site_id}. Filling values with nans")
         logger.info(e)
+        discharge_cfs_mean_since_Oct_std = np.nan
         discharge_cfs_mean_std = np.nan
         discharge_cfs_mean_Apr_mean = np.nan
 
-
-    #Get month_day from issue_date
-    issue_month_day = issue_date[5:]
-    #Encode for model
+    #Encode issue_date to get model's feature
     issue_date_no_year = assets['issue_date_encoded'][issue_month_day]
 
     #Create DataFrame from calculated values
@@ -214,6 +230,7 @@ def predict(
                          'nat_flow_11_to_10_ratio': [nat_flow_11_to_10_ratio],
                          'WTEQ_DAILY_prev': [WTEQ_DAILY_prev],
                          'WTEQ_DAILY_Apr_mean': [WTEQ_DAILY_Apr_mean],
+                         'discharge_cfs_mean_since_Oct_std': [discharge_cfs_mean_since_Oct_std],
                          'discharge_cfs_mean_std': [discharge_cfs_mean_std],
                          'discharge_cfs_mean_Apr_mean': [discharge_cfs_mean_Apr_mean],
                          'issue_date_no_year': [issue_date_no_year]
@@ -223,23 +240,26 @@ def predict(
     train_feat_1 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
                     'nat_flow_11_to_10_ratio']
 
-    train_feat_2 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year', 'discharge_cfs_mean_std',
-                    'longitude']
+    train_feat_2 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
+                    'discharge_cfs_mean_since_Oct_std', 'longitude']
 
-    train_feat_3 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year', 'discharge_cfs_mean_std',
-                    'longitude']
+    train_feat_3 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
+                    'discharge_cfs_mean_since_Oct_std', 'longitude']
 
-    train_feat_4 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year', 'discharge_cfs_mean_std',
-                    'longitude']
+    train_feat_4 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
+                    'discharge_cfs_mean_since_Oct_std', 'longitude']
 
-    train_feat_5 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year', 'discharge_cfs_mean_std',
-                    'longitude', 'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean']
+    train_feat_5 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
+                    'discharge_cfs_mean_since_Oct_std', 'longitude',
+                    'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean']
 
-    train_feat_6 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year', 'discharge_cfs_mean_std',
-                    'longitude', 'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean', 'nat_flow_Apr_mean']
+    train_feat_6 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
+                    'discharge_cfs_mean_since_Oct_std', 'longitude',
+                    'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean', 'nat_flow_Apr_mean']
 
-    train_feat_7 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year', 'discharge_cfs_mean_std',
-                    'longitude', 'nat_flow_Apr_mean', 'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean']
+    train_feat_7 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
+                    'discharge_cfs_mean_std', 'longitude', 'nat_flow_Apr_mean',
+                    'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean']
 
     train_feat_dict = {1: train_feat_1,
                        2: train_feat_2,
@@ -253,9 +273,6 @@ def predict(
     categorical = ['site_id']
     for cat in categorical:
         test[cat] = test[cat].astype('category')
-
-    #Get month to choose appropriate model
-    month = int(issue_date[5:7])
     
     test['volume_10'] = np.nan
     test['volume_50'] = np.nan
@@ -275,16 +292,19 @@ def predict(
                                  all_distr_dict: dict,
                                  distr_per_site: list,
                                  distr_to_change: list,
-                                 site_id: str):
+                                 site_id: str) -> pd.DataFrame:
         """
-        1. Gex LightGBM prediction (x)
+        Calculate Q0.1 and Q0.9 quantile values from distribution for given site_id.
+        
+        It's based on the following logic:
+        1. Gex LightGBM model prediction (x)
         2. Calculate in what point on CDF function x appears on (q0.5)
-            * 3600 volume is on 0.64 quantile, then q(0.5) = 0.64)
+            * if model returned 3600 volume and it is on 0.64 quantile, then we assume that q(0.5) = 0.64)
         3. Calculate in what point on CDF function max possible historical data for site_id (max(site_id)) appears on (qmax)
-            * 5000 volue (maximum per site_id from historical data) is on 0.98, quantile, then qmax = 0.98
-        3. Set x to max possible value (max(site_id)) if x > max(site_id)
+            * if 5000 value (maximum per site_id from historical data) is on 0.98 quantile, then qmax = 0.98
+        3. Set x to max possible value (max(site_id)) if x > max(site_id). Predicted value can't be greater than max value.
         4. Calculate a difference on CDF between qmax and q0.5
-        5. This difference becomes a base for calculating quantile0.9 (q0.9). The quantile is calculated based on proportions. 
+        5. This difference becomes a base for calculating quantile 0.9 (q0.9). The quantile is calculated based on proportions. 
             qmax - q0.5 = value
             q0.9 = q0.5 + 4/5 * value (4/5 as thanks to that the distance is proportional; it would be 3/5 for q0.8)
         6. Do similarly for min value
@@ -296,7 +316,19 @@ def predict(
                 q0.1 = q0.5 - 4/5 * value
 
         Thanks to this approach, quantile values are continous (except LightGBM predictions that exceed min/max site_id value) and
-        will never exceed min, max values range.
+        will never exceed min and max values range.
+        
+        Args:
+            data (pd.DataFrame): processed data - quantiles will be added to this DataFrame
+            min_max_site_id (list): minimum and maximum historical volumes for given site_id
+            all_distr_dict (dict) - available distributions
+            distr_per_site (list) - chosen distributions with best fit to historical data for different site_ids
+            distr_to_change (list) - corrections to distributions. If manual examination of distr_per_site distributions
+            detected that best distribution shouldn't be used, it was replaced with one of the distributions that also
+            fits data quite well but its shape is more adequate
+            site_id (str) - site_id to process
+        Returns:
+            pd.DataFrame: a DataFrame with appended quantile 0.1 and 0.9 values from distributions
         """
         #Amendments to distributions
         #Get site_ids that require distribution change
@@ -388,7 +420,10 @@ def predict(
     test.loc[test.volume_50 < test.volume_10_distr, 'volume_10_distr'] = test.volume_50
 
     #Get weighted average from distribution and models for Q0.1 and Q0.9
-    test['volume_10'] = DISTR_PERC * test.volume_10_distr + (1 - DISTR_PERC) * test.volume_10_lgbm
-    test['volume_90'] = DISTR_PERC * test.volume_90_distr + (1 - DISTR_PERC) * test.volume_90_lgbm
+    test['volume_10'] = distr_perc * test.volume_10_distr + (1 - distr_perc) * test.volume_10_lgbm
+    test['volume_90'] = distr_perc * test.volume_90_distr + (1 - distr_perc) * test.volume_90_lgbm
     
+    #Print all column values to look for errors in processing
+    logger.info(f"DataFrame columns:\n {test.columns}")
+    logger.info(f"DataFrame values:\n {test.values}")
     return test.volume_10.item(), test.volume_50.item(), test.volume_90.item()
