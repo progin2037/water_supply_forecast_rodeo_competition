@@ -125,7 +125,7 @@ def load_models(issue_months: list,
     Args:
         issue_months (list): Different months for models to load. The months
             are based on issue dates
-        read_models_from_repo (bool): Condition if read 2023_12_21 models from
+        read_models_from_repo (bool): Condition if read 2024_01_11 models from
             the repo used in the Hindcast Stage of the competition or not.
             Defaults to False
         specific_date (str): a date for models to be loaded. 
@@ -144,7 +144,7 @@ def load_models(issue_months: list,
     lgb_models_90 = []
 
     if read_models_from_repo == True:  
-        today = '2023_12_21'
+        today = '2024_01_11'
     elif specific_date != 'today':
         today = specific_date
     else:
