@@ -25,7 +25,7 @@ feat_dict = joblib.load('data\lgbm_model_feats_forecast.pkl')
 issue_months = [1, 2, 3, 4, 5, 6, 7]
 #Number of boost rounds for following months. Taken from hyparparameters
 #optimization. IF CV is ran, it is overwritten with CV results
-num_rounds_months = [140, 260, 400, 340, 800, 740, 1000]
+num_rounds_months = [140, 240, 400, 340, 800, 740, 1000]
 #Set eval to show training results every EVAL step
 EVAL = 100
 
@@ -38,7 +38,7 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
     #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
     #different months
     distr_perc_dict = {1: 0.6,
-                       2: 0.45,
+                       2: 0.4,
                        3: 0.4,
                        4: 0.3,
                        5: 0.25,
@@ -147,7 +147,6 @@ if RUN_TRAINING == True:
         lgb_models_10 = train_pipeline(train,
                                        labels,
                                        month,
-                                       month_idx,
                                        params,
                                        train_feat,
                                        num_rounds_months,
@@ -159,7 +158,6 @@ if RUN_TRAINING == True:
         lgb_models_50 = train_pipeline(train,
                                        labels,
                                        month,
-                                       month_idx,
                                        params,
                                        train_feat,
                                        num_rounds_months,
@@ -171,7 +169,6 @@ if RUN_TRAINING == True:
         lgb_models_90 = train_pipeline(train,
                                        labels,
                                        month,
-                                       month_idx,
                                        params,
                                        train_feat,
                                        num_rounds_months,

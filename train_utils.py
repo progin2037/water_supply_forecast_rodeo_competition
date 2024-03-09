@@ -7,7 +7,6 @@ import joblib
 def train_pipeline(train_df: pd.DataFrame,
                    labels: pd.Series,
                    month: int,
-                   month_idx: int,
                    params: list,
                    train_feat: list,
                    num_rounds_months: list,
@@ -23,7 +22,6 @@ def train_pipeline(train_df: pd.DataFrame,
         train_df (pd.DataFrame): Train data
         labels (pd.Series): The response variable
         month (int): Month from a given issue date (starts with 1 for Jan)
-        month_idx (int): Index of a given month (indexes start with 0)
         params (list): A list of model parameters for a selected month
         train_feat (list): A list of features to use for a selected month
         num_rounds_months (list): A number of estimators used in LightGBM models
@@ -49,7 +47,7 @@ def train_pipeline(train_df: pd.DataFrame,
     lgb_model = lgb.train(params,
                           train_data,
                           valid_sets=[train_data],
-                          num_boost_round = num_rounds_months[month_idx],
+                          num_boost_round = num_rounds_months[month - 1],
                           callbacks = [lgb.log_evaluation(evals)])
     lgb_models.append(lgb_model)
     return lgb_models
