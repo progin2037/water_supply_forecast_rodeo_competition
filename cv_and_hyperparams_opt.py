@@ -78,21 +78,26 @@ def get_years_cv(year_range: bool) -> list:
                     [2020, 2022]]
     else:
         #One year at a time
-        years_cv = [1999,
-                    2000,
-                    2001,
-                    2002,
-                    2003,
-                    2004,
+        years_cv = [2004,
+                    2005,
                     2006,
+                    2007,
                     2008,
+                    2009,
                     2010,
+                    2011,
                     2012,
+                    2013,
                     2014,
+                    2015,
                     2016,
+                    2017,
                     2018,
+                    2019,
                     2020,
-                    2022]
+                    2021,
+                    2022,
+                    2023]
     return years_cv
 
 def train_cv(train: pd.DataFrame,
@@ -554,12 +559,7 @@ def objective(trial: optuna.trial.Trial,
         MIN_SUM_HESSIAN_IN_LEAF, FEATURE_FRACTION_SEED, SEED =\
             joblib.load('data\general_hyperparams_forecast.pkl')
     #Set minimial number of columns to one less than the number of columns.
-    #0.001 is added to the result to deal with optuna approximation.
-    #Months 2, 3 and 4 were trained with a static 0.9 feature fraction
-    if month in [2, 3 ,4]:
-        feature_fraction_min = 0.9
-    else:
-        feature_fraction_min = ((len(train_feat) - 1) / len(train_feat)) + 0.001
+    feature_fraction_min = (len(train_feat) - 1) / len(train_feat)
     #Set range of values for different hyperparameters
     params = {'objective': OBJECTIVE,
               'metric': METRIC,

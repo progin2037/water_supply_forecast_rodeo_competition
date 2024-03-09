@@ -17,7 +17,7 @@ RUN_HYPERPARAMS_TUNING = False
 RUN_TRAINING = True
 
 #Read data
-data = pd.read_pickle('data/train_test_forecast.pkl')
+train = pd.read_pickle('data/train_test_forecast.pkl')
 params_dict = joblib.load('data\lgbm_model_params_forecast.pkl')
 feat_dict = joblib.load('data\lgbm_model_feats_forecast.pkl')
 
@@ -25,7 +25,7 @@ feat_dict = joblib.load('data\lgbm_model_feats_forecast.pkl')
 issue_months = [1, 2, 3, 4, 5, 6, 7]
 #Number of boost rounds for following months. Taken from hyparparameters
 #optimization. IF CV is ran, it is overwritten with CV results
-num_rounds_months = [220, 160, 300, 420, 480, 1000, 900]
+num_rounds_months = [140, 260, 400, 340, 800, 740, 1000]
 #Set eval to show training results every EVAL step
 EVAL = 100
 
@@ -45,7 +45,7 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
                        6: 0.2,
                        7: 0.1}
     #Use many years in a fold or not
-    YEAR_RANGE = True
+    YEAR_RANGE = False
     #Initiate early stopping from this iteration
     NUM_BOOST_ROUND_START = 100
     #How many times in a row early stopping can be met before stopping training
@@ -62,11 +62,9 @@ lgb_models_50 = []
 lgb_models_90 = []
 #Change types to 'category' in categorical columns
 categorical = ['site_id']
-data = to_categorical(['site_id'],
-                      data)
-#Divide data into different subsets
-test = data[data.set == 'test'].reset_index(drop = True)
-train = data[data.set == 'train'].reset_index(drop = True)
+train = to_categorical(['site_id'],
+                      train)
+#Get labels
 labels = train['volume']
 
 #CV
@@ -94,16 +92,21 @@ if RUN_CV == True:
     print('CV results per month with number of iters:', best_cv_per_month)
     print('Number of iters per month:', num_rounds_months)
     print('Interval coverage per month:', best_interval_early_stopping)
+    print('Average interval coverage:', best_interval_early_stopping.mean())
 
 #Hyperparameters tuning
 if RUN_HYPERPARAMS_TUNING == True:
-    #Maximum number of LightGBM model iterations. Less than in CV to be quicker
-    NUM_BOOST_ROUND = 600
     #Set number of hyperparameters optimization iterations
-    N_TRIALS = 150
-    #All months should take 20-50 hours to run. It is recommended to optimize
+    N_TRIALS = 80
+    #All months should take 15-40 hours to run. It is recommended to optimize
     #one year at a time
     for issue_month in tqdm(issue_months):
+        #Maximum number of LightGBM model iterations
+        if issue_month in [2, 3, 4]:
+            #Month 2, 3, 4 used lower threshold
+            NUM_BOOST_ROUND = 600
+        else:
+            NUM_BOOST_ROUND = 1000
         #Choose features from given month
         train_feat = feat_dict[issue_month]
         sampler = TPESampler(seed = 2112) #to get the same results all the time
@@ -128,7 +131,7 @@ if RUN_HYPERPARAMS_TUNING == True:
                        n_trials = N_TRIALS)
         #Save study from given month
         joblib.dump(study,
-                    f"results/hyperparams_tuning/study_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
+                    f"results/hyperparams_tuning/study_forecast_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
 
 #Train models for each month and keep them in different lists according to
 #quantiles

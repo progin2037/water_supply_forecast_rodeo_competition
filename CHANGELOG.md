@@ -2,6 +2,8 @@ The changelog was created to keep track of most important changes between differ
 
 # Changes between Hindcast Stage and Forecast Stage
 
+* added 20-fold LOOCV with one changing year
+* changed settings for hyperparams optimization and model training
 * added interval coverage
 * updated features to train
 * updated distribution estimates based on full available data (with outliers removal)

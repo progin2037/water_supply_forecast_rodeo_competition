@@ -27,108 +27,114 @@ joblib.dump([BAGGING_FREQ,
 '''
 #Read params from files
 print('Jan')
-study = joblib.load('results/hyperparams_tuning/study_2023_12_19_14_25_54_month_1.pkl')
+study = joblib.load('results/hyperparams_tuning/study_2024_01_11_16_20_18_month_1.pkl')
 display(study.best_params)
 
 print('Feb')
-study = joblib.load('results/hyperparams_tuning/study_2023_12_19_16_25_25_month_2.pkl')
+study = joblib.load('results/hyperparams_tuning/study_2024_01_11_19_23_41_month_2.pkl')
 display(study.best_params)
 
 print('Mar')
-study = joblib.load('results/hyperparams_tuning/study_2023_12_19_20_40_25_month_3.pkl')
+#Month 3 was the first to optimize and it was done with 100 iterations instead of 80
+study = joblib.load('results/hyperparams_tuning/study_2024_01_08_17_21_37_month_3.pkl')
 display(study.best_params)
 
 print('Apr')
-study = joblib.load('results/hyperparams_tuning/study_2023_12_20_00_18_08_month_4.pkl')
+study = joblib.load('results/hyperparams_tuning/study_2024_01_10_12_46_25_month_4.pkl')
 display(study.best_params)
 
 print('May')
-study = joblib.load('results/hyperparams_tuning/study_2023_12_20_18_33_05_month_5.pkl')
+study = joblib.load('results/hyperparams_tuning/study_2024_01_11_17_13_45_month_5.pkl')
 display(study.best_params)
 
 print('June')
-study = joblib.load('results/hyperparams_tuning/study_2023_12_20_19_05_48_month_6.pkl')
+study = joblib.load('results/hyperparams_tuning/study_2024_01_11_00_10_08_month_6.pkl')
 display(study.best_params)
 
 print('July')
-study = joblib.load('results/hyperparams_tuning/study_2023_12_21_17_58_19_month_7.pkl')
+#There are only first 5 saved iterations for July due to some crashes in the
+#processing. The optimization was performed again and after ~60 iterations the
+#5th one was still the best, so it was kept as the final one for the Forecast
+#Stage due to the approaching deadline
+study = joblib.load('results/hyperparams_tuning/study_2024_01_10_13_23_44_month_7.pkl')
 display(study.best_params)
 '''
 
 #Set different params for each month. These are best params from hyperparameters
 #optimization
+
 #Jan
 params_1 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.07080932034021628,
-            'max_depth': 6,
-            'num_leaves': 108,
+            'learning_rate': 0.08907658903395389,
+            'max_depth': 9,
+            'num_leaves': 30,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.02544353791657603,
+            'lambda_l2': 9.40074139762042,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.801020595961324,
+            'subsample': 0.9061469787400036,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
             'feature_fraction': 1.0,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 248,
-            'min_data_in_leaf': 22,
+            'max_bin': 250,
+            'min_data_in_leaf': 25,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
 #Feb
 params_2 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.07431327342386611,
-            'max_depth': 6,
-            'num_leaves': 58,
+            'learning_rate': 0.06327277604025482,
+            'max_depth': 5,
+            'num_leaves': 84,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.08035611763711388,
+            'lambda_l2': 1.4508079961375555,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.8012846276823483,
+            'subsample': 0.8898046181985331,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 0.9,
+            'feature_fraction': 0.8333333333333334,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 238,
-            'min_data_in_leaf': 25,
+            'max_bin': 265,
+            'min_data_in_leaf': 19,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
 #Mar
 params_3 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.05391608535819001,
-            'max_depth': 6,
-            'num_leaves': 76,
+            'learning_rate': 0.07577489685410167,
+            'max_depth': 9,
+            'num_leaves': 19,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.01991847988533871,
+            'lambda_l2': 0.004441326122826873,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.8960761555373657,
+            'subsample': 0.7768537092316625,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 0.9,
+            'feature_fraction': 0.8333333333333334,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 294,
-            'min_data_in_leaf': 16,
+            'max_bin': 234,
+            'min_data_in_leaf': 24,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
 #Apr
 params_4 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.04957368927648065,
-            'max_depth': 6,
-            'num_leaves': 64,
+            'learning_rate': 0.06458637200533769,
+            'max_depth': 5,
+            'num_leaves': 86,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.0004490693730225264,
+            'lambda_l2': 1.238916568828443,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.8126256151956979,
+            'subsample': 0.8897885951464931,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 1.0,
+            'feature_fraction': 0.8333333333333334,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 218,
+            'max_bin': 273,
             'min_data_in_leaf': 25,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
@@ -136,57 +142,57 @@ params_4 = {'objective': OBJECTIVE,
 #May
 params_5 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.07131428559622419,
-            'max_depth': 10,
-            'num_leaves': 125,
+            'learning_rate': 0.036413549774305234,
+            'max_depth': 9,
+            'num_leaves': 59,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.20632642059931852,
+            'lambda_l2': 0.00010009943502276089,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.816939322034667,
+            'subsample': 0.7708049704957225,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
             'feature_fraction': 0.875,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 239,
-            'min_data_in_leaf': 23,
+            'max_bin': 226,
+            'min_data_in_leaf': 25,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
 #Jun
 params_6 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.0720252171436197,
-            'max_depth': 7,
-            'num_leaves': 63,
+            'learning_rate': 0.03710481544436431,
+            'max_depth': 10,
+            'num_leaves': 109,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.007869332952423388,
+            'lambda_l2': 2.377774250624091,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.8713846673500828,
+            'subsample': 0.7631179547240611,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 0.8888888888888888,
+            'feature_fraction': 1.0,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 234,
-            'min_data_in_leaf': 23,
+            'max_bin': 295,
+            'min_data_in_leaf': 24,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
 #Jul
 params_7 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.0670977949575001,
-            'max_depth': 9,
-            'num_leaves': 71,
+            'learning_rate': 0.025193770366946387,
+            'max_depth': 8,
+            'num_leaves': 102,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.7613143327228161,
+            'lambda_l2': 0.0005725785588927758,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.9523355682312036,
+            'subsample': 0.9101358458638595,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 1.0,
+            'feature_fraction': 0.8888888888888888,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 283,
-            'min_data_in_leaf': 19,
+            'max_bin': 290,
+            'min_data_in_leaf': 15,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
