@@ -23,33 +23,6 @@ def display_first_n_last_n_rows(data: pd.DataFrame,
     display(pd.concat([data.head(n), data.tail(n)]))
 
 
-def get_test_rows(site_ids_unique: list,
-                  test_years: list,
-                  column_names: list) -> pd.DataFrame:
-    """
-    Get test rows to facilitate feature creation. It's created year-wisely, one
-    observation per year and site_id. Iterate over years and append nan volume
-    values with year, site_id and idication that it's a sample from the test set.
-    
-    Args:
-        site_ids_unique (list): A list of unique site_ids
-        test_years (list): A list of test years
-        column_names (list): A list of column names
-    Returns:
-        test_rows_to_add (pd.DataFrame): A DataFrame with test rows
-    """
-    test_rows_to_add = []
-    #Iterate over different site_id
-    for site_id in site_ids_unique:
-        #Iterate over different years
-        for year in test_years:
-            #Append values to test_rows_to_add list
-            test_rows_to_add.append([site_id, year, np.nan, 'test'])
-    #Convert list to DataFrame
-    test_rows_to_add = pd.DataFrame(test_rows_to_add, columns = column_names)
-    return test_rows_to_add
-
-
 def merge_usgs_streamflow(site_ids_unique: list,
                           years: list) -> tuple[pd.DataFrame, list]:
     """

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pickle
 
-from utils import ReadAllData, get_test_rows, get_outliers
+from utils import ReadAllData, get_outliers
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
 preprocess_monthly_naturalized_flow, preprocess_snotel
@@ -28,11 +28,6 @@ dfs = ReadAllData()
 #Get train df from dfs list
 train = dfs.train.copy()
 
-#Add 'set' column that specifies if rows are from train or test set.
-#The processing is done simultaneously for train as test sets as features are
-#created only for a given water year
-train['set'] = 'train'
-
 #Remove missing volume
 train = train[train.volume.notna()].reset_index(drop = True)
 
@@ -47,12 +42,6 @@ train = train.iloc[~train.index.isin(zscores_outliers.index)].reset_index(drop =
 min_max_site_id = train.groupby(['site_id'])['volume'].agg(['min', 'max'])
 min_max_site_id.to_pickle('data\min_max_site_id_forecast.pkl')
 
-#Get test rows
-test_rows_to_add = get_test_rows(dfs.site_ids_unique,
-                                 dfs.years,
-                                 list(train.columns))
-#Merge rows from train and test
-train = pd.concat([train, test_rows_to_add])
 #Sort by site_id and year
 train = train.sort_values(['site_id', 'year']).reset_index(drop = True)
 
