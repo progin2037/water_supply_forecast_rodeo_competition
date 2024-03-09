@@ -1,12 +1,15 @@
 # water_supply_forecast_rodeo_competition
 
 ## Introduction
-The repository contains a full Python solution for the Water Supply Forecast Rodeo (https://www.drivendata.org/competitions/group/reclamation-water-supply-forecast/) competition for its Hindcast Stage.
+The repository contains a full Python solution for the Water Supply Forecast Rodeo (https://www.drivendata.org/competitions/group/reclamation-water-supply-forecast/) competition for its Forecast Stage.
 The competition aims at predicting water supply for 26 western US hydrologic sites. Forecasts are made for different quantiles - 0.1, 0.5 and 0.9. Additionally, the predictions are made for different
 issue dates. For most hydrologic sites, the predictions are made for the volume of water flow between April and July, but the forecasts are issued in different months (4 weeks from January, February, March, April,
 May, June, July).
 
 The solution makes predictions based on the approach of creating LightGBM models for different months and averaging their results with distribution estimates from historical data.
+
+The solution was created for the Forecast Stage of the competition. It is different from the Hindcast Stage as there isn't a static test set to make predictions for. Predictions are made real-time 
+on the competition server for water volume forecasts between April (March for one hydrologic site) and July (June for one hydrologic site) 2024.
 
 ## Content
 1. Scripts to run to create and test models
@@ -16,20 +19,20 @@ The solution makes predictions based on the approach of creating LightGBM models
 	4. model_training.py - 	train and saves models. There are different parameters to choose from for this script. By default, RUN_CV and RUN_TRAINING are set to True, whereas
 	RUN_HYPERPARAMS_TUNING is set to False. Models' hyperparameters were already read from model_params.py but creating hyperparameters by yourself is also supported to check
 	if hardcoded hyperparameters are indeed the output of running the function. Keep in mind that hyperparameters optimization takes long (20-50 hours).
-	5. get_predictions.py - it runs trained models on the test data and saves the results.
+	5. get_predictions.py - it runs trained models on the test data and saves the results. Forecast Stage doesn't use a static test set	but it is still helpful to have a working prediction pipeline.
 2. Auxiliary scripts
 	1. utils.py - general utilities, functions/list/dictionary that could be used for different tasks.
 	2. feature_engineering.py - functions to facilitate feature engineering.
 	3. train_utils.py - functions dedicated for model training.
 	4. cv_and_hyperparams_opt.py - functions with main cv/hyperparameters tuning logic.
 3. Models from repo (models/)
-	1. Contains models trained for each month (1 (Jan), 2 (Feb), 3 (Mar), 4 (Apr), 5 (May), 6 (Jun), 7 (Jul)) and quantile (0.1/0.5/0.9) that were used in the Hindcast Stage of the competition.
+	1. Contains models trained for each month (1 (Jan), 2 (Feb), 3 (Mar), 4 (Apr), 5 (May), 6 (Jun), 7 (Jul)) and quantile (0.1/0.5/0.9) that were used in the Forecast Stage of the competition.
 	Running this repo code should result in the same models.
 4. Results from repo (results/)
-	1. Contains hyperparameters tuning results for the Hindcast Stage of the competition, one per month (different quantiles were optimized together). It is also a directory where train results
+	1. Contains hyperparameters tuning results for the Forecast Stage of the competition, one per month (different quantiles were optimized together). It is also a directory where train results
 	will be appended after running prediction pipeline from get_predictions.py.
 3. Inference (inference/)
-	1. Inference code used for the Hindcast Stage on the competition server. It is similar to the main code, adapting to the code submition format
+	1. Inference code used for the Forecast Stage on the competition server. It is similar to the main code, adapting to the code submition format
 	(https://www.drivendata.org/competitions/257/reclamation-water-supply-forecast-hindcast/page/809/).
 4. Notebooks (notebooks/)
 	1. Additional analyses.
