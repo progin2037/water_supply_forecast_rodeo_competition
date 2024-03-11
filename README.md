@@ -8,8 +8,15 @@ May, June, July).
 
 The solution makes predictions based on the approach of creating LightGBM models for different months and averaging their results with distribution estimates from historical data.
 
-The solution was created for the Forecast Stage of the competition. It is different from the Hindcast Stage as there isn't a static test set to make predictions for. Predictions are made real-time 
-on the competition server for water volume forecasts between April (March for one hydrologic site) and July (June for one hydrologic site) 2024.
+The aim of the first stage of the competition (Hindcast Stage, hidcast_stage branch, https://www.drivendata.org/competitions/257/reclamation-water-supply-forecast-hindcast/) was
+to make predictions for historical data (2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023).
+
+Second one (Forecast Stage, forecast_stage branch, https://www.drivendata.org/competitions/259/reclamation-water-supply-forecast/) is a real-time stage. Predictions are made on the competition
+server for water volume forecasts between April (March for one hydrologic site) and July (June for one hydrologic site) 2024.
+
+In the third stage (Final Prize Stage, main branch, https://www.drivendata.org/competitions/262/reclamation-water-supply-forecast-final/) the objective was to make predictions using LOOCV
+(Leave-One-Out Cross Validation) with 20 folds where one of the years between 2004-2023 is a test set. It is different from the other stages in the way that using this fold CV year data for
+creating aggregations is prohibited, so each fold's data has to be processed separately.
 
 ## Content
 1. Scripts to run to create and test models
