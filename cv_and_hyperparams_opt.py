@@ -500,7 +500,7 @@ def lgbm_cv(train: pd.DataFrame,
     month_weights = month_importance / sum_weights
     #Sum of results for different months multiplied by weights to get
     #a weighted average over different months
-    result_final_avg = np.sum(best_cv_early_stopping[:, 0] * month_weights)   
+    result_final_avg = np.sum(best_cv_early_stopping[:, 0] * month_weights)
 
     #Get optimal number of rounds for each month separately
     num_rounds_months = list(best_cv_early_stopping[:, 1].astype('int'))
@@ -508,7 +508,9 @@ def lgbm_cv(train: pd.DataFrame,
     best_interval_early_stopping = []
     for month in cv_results_all_months.keys():
         best_interval_early_stopping.append(results_coverage_all_months[month][-1])    
-    best_interval_early_stopping = np.array(best_interval_early_stopping)[:, 0]
+    #Get weighted average also for interval
+    best_interval_early_stopping =\
+        np.sum(best_interval_early_stopping[:, 0] * month_weights)
     return best_cv_early_stopping, result_final_avg, num_rounds_months,\
         best_interval_early_stopping
 
