@@ -487,8 +487,21 @@ def lgbm_cv(train: pd.DataFrame,
     for month in cv_results_all_months.keys():    
         best_cv_early_stopping.append(cv_results_all_months[month][-1])
     best_cv_early_stopping = np.array(best_cv_early_stopping)
-    #Average best fits over months
-    result_final_avg = np.mean(best_cv_early_stopping[:, 0])
+    #Average best fits over months. detroit_lake_inflow predictions are for
+    #Apr-Jun period, there aren't any values for this site_id for July, so
+    #there's a need for correction
+
+    #Add month imporance. July has less importance, as 25 out of 26 site_ids
+    #have values for this month
+    month_importance = np.array([1, 1, 1, 1, 1, 1, 25/26])
+    #Sum weights
+    sum_weights = np.sum(month_importance)
+    #Ratio of importance to sum of all importancs
+    month_weights = month_importance / sum_weights
+    #Sum of results for different months multiplied by weights to get
+    #a weighted average over different months
+    result_final_avg = np.sum(best_cv_early_stopping[:, 0] * month_weights)   
+
     #Get optimal number of rounds for each month separately
     num_rounds_months = list(best_cv_early_stopping[:, 1].astype('int'))
     #Get interval coverage from the best iteration
