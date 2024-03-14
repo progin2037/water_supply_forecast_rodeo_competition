@@ -161,6 +161,73 @@ def get_aggs_month(df_aggs: pd.DataFrame,
     return df_main
 
 
+def get_prev_monthly(df_aggs: pd.DataFrame,
+                     df_main: pd.DataFrame,
+                     cols: list,
+                     new_col_names: list,
+                     date_col: str,
+                     site_id_col: str,
+                     month_offset: bool,
+                     day_start: int) -> pd.DataFrame:
+    """
+    Get previous available value before issue date from a monthly DataFrame.
+    
+    Args:
+        df_aggs (pd.DataFrame): A DataFrame to get aggregates from
+        df_main (pd.DataFrame): The main DataFrame to be merged with df_aggs
+        cols (list): Columns to get previous available values from (from df_aggs)
+        new_col_names (list): New names of columns to append
+        date_col (str): df_aggs date column to aggregate on
+        site_id_col (str): A column from df_aggs with site_id information
+        month_offset (bool): Indicates if date_col was created just based on
+            in which month the feature occurred (True) or if offset of
+            a month was already added (False)
+        day_start (int): Earliest day when monthly data is available (when
+            feature could be merged with the main DataFrame). It should be
+            the same for each month
+    Returns:
+        df_main (pd.DataFrame): The main DataFrame with appended prev columns
+    """
+    #Add suffix to columns to aggregate on
+    for feat, new_name in zip(cols, new_col_names):
+        df_aggs[new_name] = df_aggs[feat]
+    #cols = [x + suffix for x in cols]
+    #Make sure that site_id column from df_aggs is called site_id
+    df_aggs.rename({site_id_col: 'site_id'}, axis = 1, inplace = True)
+    #Create issue date one month and 5 days later to not look into future
+    df_aggs[date_col] = pd.to_datetime(df_aggs[date_col])
+    #Get year, month, day
+    df_aggs.year = df_aggs[date_col].dt.year
+    df_aggs.month = df_aggs[date_col].dt.month
+    df_aggs.day = df_aggs[date_col].dt.day
+    #Get date with day_start
+    df_aggs['issue_date_var'] = pd.to_datetime(dict(year = df_aggs.year,
+                                                    month = df_aggs.month,
+                                                    day = day_start))
+    #Add one month as a starting point only if it hasn't been yet appended
+    if month_offset == False:
+        df_aggs['issue_date_var'] = df_aggs.issue_date_var +\
+            pd.DateOffset(months = 1)
+    df_aggs['issue_date_var'] = df_aggs.issue_date_var.astype('str')
+        
+    #Get date from the first available day to merge on (day_start)
+    df_main['issue_date_var'] = pd.to_datetime(df_main.year.astype('str') + '-' +\
+                                               df_main.month.astype('str') + '-' +\
+                                               str(day_start))
+    #Subtract one month if date is from the same month
+    df_main.loc[df_main.day < day_start, 'issue_date_var'] =\
+        df_main.issue_date_var - pd.DateOffset(months = 1)
+    df_main['issue_date_var'] = df_main.issue_date_var.astype('str')
+    df_aggs = df_aggs[['site_id', 'issue_date_var'] + new_col_names]
+    #Merge to df_main last available monthly columns' values before issue date
+    df_main = pd.merge(df_main,
+                       df_aggs,
+                       how = 'left',
+                       on = ['site_id', 'issue_date_var'])
+    df_main.drop('issue_date_var', axis = 1, inplace = True)
+    return df_main
+
+
 def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataFrame) -> pd.DataFrame:
     """
     Append issue dates and shift by 1 month to be able to safely merge with

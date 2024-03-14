@@ -5,7 +5,7 @@ import pickle
 from utils import ReadAllData, get_outliers
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
-preprocess_monthly_naturalized_flow, preprocess_snotel
+preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly
 
 import time
 
@@ -135,16 +135,17 @@ train = get_aggs_month_day(streamflow,
 train_monthly_naturalized_flow = preprocess_monthly_naturalized_flow(dfs.train_monthly_naturalized_flow)
 
 #Get naturalized flow from previous month
-train['nat_flow_prev'] = train.apply(lambda x: train_monthly_naturalized_flow.loc\
-                                     [(train_monthly_naturalized_flow.issue_date <= x.issue_date) &
-                                      (train_monthly_naturalized_flow.site_id == x.site_id) &
-                                      (train_monthly_naturalized_flow.forecast_year == x.year),
-                                      'volume'].\
-                                     tail(1).mean(), axis = 1)
+train = get_prev_monthly(df_aggs = train_monthly_naturalized_flow,
+                         df_main = train,
+                         cols = ['volume'],
+                         new_col_names = ['nat_flow_prev'],
+                         date_col = 'issue_date',
+                         site_id_col = 'site_id',
+                         month_offset = True,
+                         day_start = 1)
 
 #Rename columns to make the processing easier
 train_monthly_naturalized_flow.rename({'volume': 'nat_flow'}, axis = 1, inplace = True)
-
 #Get average naturalized flow since April, before issue date (nat_flow_Apr_mean)
 train = get_aggs_month(train_monthly_naturalized_flow,
                        train,
