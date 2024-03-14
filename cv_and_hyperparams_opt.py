@@ -6,7 +6,7 @@ import optuna
 import joblib
 from tqdm import tqdm
 
-from utils import get_quantiles_from_distr, all_distr_dict, distr_to_change
+from utils import get_quantiles_from_distr, all_distr_dict
 
 def get_cv_folds(train: pd.DataFrame,
                  month: int,
@@ -218,8 +218,10 @@ def lgbm_cv(train: pd.DataFrame,
         min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
             for given site_id
         path_distr (str): Path to values of distribution estimate parameters
-            per each site_id (without amendments to distributions. Amendments
-            are imported from utils)
+            per each site_id already with amendments to distributions. Different
+            LOOCV years have different distribution files. They can be
+            distinguished by year suffixes (for example if path is distr_final,
+            file name for LOOCV year 2010 will be distr_final_2010)
         distr_perc_dict (dict): How much importance is given for distribution
             estimate. For 0.4 value, it's 40% (while LightGBM model is 60%).
             Different months use different distribution percentage (1 for
@@ -349,8 +351,7 @@ def lgbm_cv(train: pd.DataFrame,
                 result_df = get_quantiles_from_distr(result_df,
                                                      min_max_site_id,
                                                      all_distr_dict,
-                                                     path_distr,
-                                                     distr_to_change)
+                                                     f'{path_distr}{year}')
                 #Add min and max for site_id as 'max' and 'min' columns
                 result_df = pd.merge(result_df,
                                      min_max_site_id,
@@ -550,8 +551,10 @@ def objective(trial: optuna.trial.Trial,
         min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
             for given site_id
         path_distr (str): Path to values of distribution estimate parameters
-            per each site_id (without amendments to distributions. Amendments
-            are imported from utils)
+            per each site_id already with amendments to distributions. Different
+            LOOCV years have different distribution files. They can be
+            distinguished by year suffixes (for example if path is distr_final,
+            file name for LOOCV year 2010 will be distr_final_2010)
         distr_perc_dict (dict): How much importance is given for distribution
             estimate. For 0.4 value, it's 40% (while LightGBM model is 60%).
             Different months use different distribution percentage (1 for

@@ -362,47 +362,10 @@ all_distr_dict = {'alpha': stats.alpha,
  'wrapcauchy': stats.weibull_min}
 
 
-#Amendments to distributions. Some distributions' shapes weren't the best, such
-#cases were explored manually and one of other 9 best distributions was chosen
-#to get distributions with shape more similar to historical volume data.
-#distr_to_cahen list is in the following format:
-#site_id - distribution_name_in_scipy.stats - distribution_parameters
-distr_to_change = [['american_river_folsom_lake',
- {'triang': {'c': 0.14735176184191567,
-   'loc': 68.5118551657541,
-   'scale': 3083.6967210503262}}], 
-    ['boysen_reservoir_inflow',
- {'beta': {'a': 1.445163988847558,
-   'b': 1.8079262402776015,
-   'loc': 99.50963614564361,
-   'scale': 1286.4050012660773}}],
-   ['colville_r_at_kettle_falls',
- {'rice': {'b': 0.5073357149979119,
-   'loc': 7.54800320713469,
-   'scale': 86.63249419657262}}],
-['missouri_r_at_toston',
- {'genhalflogistic': {'c': 0.43573999884824266,
-   'loc': 857.2975054574381,
-   'scale': 1229.1703861049837}}],
-['owyhee_r_bl_owyhee_dam', #hard one
- {'gompertz': {'c': 1.9258979823920839,
-   'loc': 47.69799999999867,
-   'scale': 730.0492988832123}}],
-['san_joaquin_river_millerton_reservoir',
- {'triang': {'c': 0.10365871486236766,
-   'loc': 126.02676441491067,
-   'scale': 3141.7834575485103}}],
-['sweetwater_r_nr_alcova', #hard one
- {'triang': {'c': 0.0522635575618193,
-   'loc': 5.661542030339158,
-   'scale': 166.89369023288407}}]]
-
-
 def get_quantiles_from_distr(data: pd.DataFrame,
                              min_max_site_id: pd.DataFrame,
                              all_distr_dict: dict,
-                             path_distr: str,
-                             distr_to_change: list) -> pd.DataFrame:
+                             path_distr: str) -> pd.DataFrame:
     """
     Calculate Q0.1 and Q0.9 quantile values from distribution for given site_id.
     
@@ -442,33 +405,17 @@ def get_quantiles_from_distr(data: pd.DataFrame,
         min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
             for given site_id
         all_distr_dict (dict): Available distributions
-        distr_per_site (list): Chosen distributions with best fit to historical
-            data for different site_ids
-        distr_to_change (list): Corrections to distributions. If manual
-            examination of distr_per_site distributions detected that best fitted
-            distribution shouldn't be used, it is replaced with one of the
-            distributions that also fits data well but its shape is more adequate
-        site_id (str): site_id to process
+        path_distr (str): Path to values of distribution estimate parameters
+            per each site_id already with amendments to distributions. Correct
+            LOOCV year was already passed to the argument, so it is the path to
+            distribution from the given year.
     Returns:
-        data (pd.DataFrame): a df with appended quantile 0.1 and 0.9 values from
-            distributions
+        data (pd.DataFrame): A DataFrame with appended quantile 0.1 and 0.9
+        values from distributions
     """
     #Read a dictionary with site_id - distribution matches
     with open(path_distr, "rb") as fp:
         distr_per_site = pickle.load(fp)
-
-    #Amendments to distributions
-    #Get site_ids that require distribution change
-    sites_distr_to_change = [x[0] for x in distr_to_change]
-    #Get site_ids from distr_per_site
-    site_ids_distr_per_site = [x[0] for x in distr_per_site]
-    #Get indexes to change from site_ids_distr_per_site (distr_per_site)
-    idxs_to_change = [site_ids_distr_per_site.index(x) for x in sites_distr_to_change]
-    #Get indexes to change distr_per_site values. Those indexes are from distr_to_change
-    idxs_change_with = list(range(len(sites_distr_to_change)))
-    #Change values for specified indexes
-    for idx_to_change, idx_change_with in zip(idxs_to_change, idxs_change_with):
-        distr_per_site[idx_to_change] = distr_to_change[idx_change_with]
 
     #Iterate over different site_ids
     for site_id, site_params in distr_per_site:

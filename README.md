@@ -32,16 +32,24 @@ creating aggregations is prohibited, so each fold's data has to be processed sep
 	2. feature_engineering.py - functions to facilitate feature engineering.
 	3. train_utils.py - functions dedicated for model training.
 	4. cv_and_hyperparams_opt.py - functions with main cv/hyperparameters tuning logic.
-3. Models from repo (models/)
+3. Distribution estimates (data/distr)
+	1. Contains 4 types of output files from distribution_estimates.py:
+		1. distr_per_site_[year] - all fitted distributions with site_id-distribution_name-distribution_fit-parameter_values combinations from a given year.
+		2. distr_per_site_best_[year] - one best fit for each site_id from a given year (site_id-distribution_name-parameter_values combinations).
+		3. distr_amend_[year] - amendments to make to distr_per_site_best_[year]. It contains (site_id-distribution_name-parameter_values combinations) of site_ids with distributions to change
+		for a given year.
+		4. distr_final_[year] - final distributions used in the model. It is the result of merging distr_per_site_best_[year] with distr_amend_[year] amendments for selected site_ids for a given year.
+	2. Estimated parameters were saved to facilitate the process, as running distribution_estimates.py for all years takes about 4-6 hours.
+4. Models from repo (models/)
 	1. Contains models trained for each month (1 (Jan), 2 (Feb), 3 (Mar), 4 (Apr), 5 (May), 6 (Jun), 7 (Jul)) and quantile (0.1/0.5/0.9) that were used in the Forecast Stage of the competition.
 	Running this repo code should result in the same models.
-4. Results from repo (results/)
+5. Results from repo (results/)
 	1. Contains hyperparameters tuning results for the Forecast Stage of the competition, one per month (different quantiles were optimized together). It is also a directory where train results
 	will be appended after running prediction pipeline from get_predictions.py.
-3. Inference (inference/)
+6. Inference (inference/)
 	1. Inference code used for the Forecast Stage on the competition server. It is similar to the main code, adapting to the code submition format
 	(https://www.drivendata.org/competitions/257/reclamation-water-supply-forecast-hindcast/page/809/).
-4. Notebooks (notebooks/)
+7. Notebooks (notebooks/)
 	1. Additional analyses.
 ## How to run
 The solution was created using Python version 3.10.13.
@@ -65,6 +73,6 @@ The solution was created using Python version 3.10.13.
 	reading data downloaded in the previous point could be used.
 6. Run data_processing.py.
 7. Run model_params.py.
-8. Run distribution_estimates.py.
+8. [OPTIONAL] Run distribution_estimates.py. Output from this script is already saved in this repository in data/distr, as running the script takes about 4-6 hours.
 9. Run model_training.py.
 10. Run get_predictions.py.

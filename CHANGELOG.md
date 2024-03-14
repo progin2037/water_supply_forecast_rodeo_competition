@@ -1,7 +1,11 @@
 The changelog was created to keep track of most important changes between different stages of the competition (Hindcast Stage, Forecast Stage, Final Prize Stage).
 
-# Changes between Hindcast Stage and Forecast Stage
+# Changes between Forecast Stage and Final Prize Stage
+* added fitted distributions to data/distr directory
+* added distribution fitting separately for all LOOCV years, amendments added to distribution estimation pipeline
+* corrected CV results (added less weight for July)
 
+# Changes between Hindcast Stage and Forecast Stage
 * added 20-fold LOOCV with one changing year
 * changed settings for hyperparams optimization and model training
 * added interval coverage

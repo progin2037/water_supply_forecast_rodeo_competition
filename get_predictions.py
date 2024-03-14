@@ -25,8 +25,9 @@ min_max_site_id = pd.read_pickle('data\min_max_site_id_forecast.pkl')
 #Read submission example
 submission_format = pd.read_csv('data/submission_format.csv')
 
-#Path to different distributions for different site_id
-PATH_DISTR = 'data\distr_per_site_forecast_50_outliers_2_5_best'
+#Path to different distributions for different site_ids. Distributions
+#for different LOOCV years are in different files with year suffix
+PATH_DISTR = 'data\distr\distr_final_'
 #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
 #different months
 distr_perc_dict = {1: 0.6,
