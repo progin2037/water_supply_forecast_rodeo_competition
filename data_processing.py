@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 import pickle
+import joblib
 
-from utils import ReadAllData, get_outliers
+from utils import ReadAllData, years_cv, get_outliers
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
 preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly
@@ -31,16 +32,33 @@ train = dfs.train.copy()
 #Remove missing volume
 train = train[train.volume.notna()].reset_index(drop = True)
 
-#Remove outliers from the dataframe for values exceeding OUT_THRES's z-score
-zscores_outliers = get_outliers(train, OUT_THRES)
-train = train.iloc[~train.index.isin(zscores_outliers.index)].reset_index(drop = True)
-
 #Get and save min and max values for given site_id. It's done after outliers
-#removal to exclude too small/big values from site_id's volume range.
-#It's used for all years with data as there isn't much data, so even
-#potentially inacurate old volumes before YEAR_SINCE are used.
-min_max_site_id = train.groupby(['site_id'])['volume'].agg(['min', 'max'])
-min_max_site_id.to_pickle('data\min_max_site_id_forecast.pkl')
+#removal to exclude too small/big values from site_id's volume range. It's used
+#for all years as there isn't much data, so even potentially inacurate old
+#volumes before YEAR_SINCE are used. Min/max values are created separetely
+#without each LOOCV year
+min_max_site_id_dict = dict()
+#Set threshold for removing outliers in min/max calculations
+OUT_THRES = 2.5
+for year_cv in years_cv:
+    #Remove data from given CV fold and store it in a different DataFrame
+    #Don't reset index, so index is kept
+    train_without_cv = train[train.year != year_cv]
+    #Remove outliers. Remove them based on train_without_cv and append those
+    #results to train
+    zscores_outliers = get_outliers(train_without_cv, OUT_THRES)
+    train_without_cv = train_without_cv.\
+        loc[~train_without_cv.index.isin(zscores_outliers.index)].reset_index(drop = True)
+    #Get volumes after removing outliers. They could be used later to get full data
+    #after removing data from specific years
+    volume_full_data = train_without_cv[['site_id', 'year', 'volume']]
+    #Get min and max values without given LOOCV year
+    min_max_site_id =\
+        volume_full_data.groupby(['site_id'])['volume'].agg(['min', 'max'])
+    #Append volume_full_data with this year_cv outliers removal
+    min_max_site_id_dict[year_cv] = min_max_site_id    
+#Save min/max volumes to .pkl
+joblib.dump(min_max_site_id_dict, 'data\min_max_site_id_dict_final.pkl')
 
 #Sort by site_id and year
 train = train.sort_values(['site_id', 'year']).reset_index(drop = True)
@@ -228,7 +246,7 @@ with open("data\issue_date_encoded", "wb") as fp:
     pickle.dump(issue_date_encoded, fp)
 
 #Save train and test data ready for modelling
-train.to_pickle('data/train_test_forecast.pkl')
+train.to_pickle('data/train_test_final.pkl')
 
 end = time.time()
 elapsed = end - start

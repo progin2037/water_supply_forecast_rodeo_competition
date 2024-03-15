@@ -1,6 +1,8 @@
 The changelog was created to keep track of most important changes between different stages of the competition (Hindcast Stage, Forecast Stage, Final Prize Stage).
 
 # Changes between Forecast Stage and Final Prize Stage
+* removed outliers removal from full data processing (kept for distribution estimates and min_max_site_id_dict_final)
+* added min_max_site_id_dict_final - min/max values for site_id without a year from the given LOOCV fold (20 DataFrames in a dictionary, each for one LOOCV year)
 * added fitted distributions to data/distr directory
 * added distribution fitting separately for all LOOCV years, amendments added to distribution estimation pipeline
 * corrected CV results (added less weight for July)

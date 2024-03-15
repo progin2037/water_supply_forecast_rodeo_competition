@@ -20,7 +20,7 @@ joblib.dump([BAGGING_FREQ,
              MIN_SUM_HESSIAN_IN_LEAF,
              FEATURE_FRACTION_SEED,
              SEED],
-            'data\general_hyperparams_forecast.pkl')
+            'data\general_hyperparams_final.pkl')
 
 #Read hyperparameters tuning results. Commented as this step is not necessary,
 #values from hyperparamaters tuning are already hardcoded below
@@ -207,7 +207,7 @@ params_dict = {1: params_1,
                7: params_7}
 
 #Save params to .pkl
-joblib.dump(params_dict, 'data\lgbm_model_params_forecast.pkl')
+joblib.dump(params_dict, 'data\lgbm_model_params_final.pkl')
 
 #Set different features for each month
 #Jan
@@ -244,4 +244,4 @@ train_feat_dict = {1: train_feat_1,
                    6: train_feat_6,
                    7: train_feat_7}
 #Save features to .pkl
-joblib.dump(train_feat_dict, 'data\lgbm_model_feats_forecast.pkl')
+joblib.dump(train_feat_dict, 'data\lgbm_model_feats_final.pkl')

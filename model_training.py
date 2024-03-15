@@ -17,9 +17,9 @@ RUN_HYPERPARAMS_TUNING = False
 RUN_TRAINING = True
 
 #Read data
-train = pd.read_pickle('data/train_test_forecast.pkl')
-params_dict = joblib.load('data\lgbm_model_params_forecast.pkl')
-feat_dict = joblib.load('data\lgbm_model_feats_forecast.pkl')
+train = pd.read_pickle('data/train_test_final.pkl')
+params_dict = joblib.load('data\lgbm_model_params_final.pkl')
+feat_dict = joblib.load('data\lgbm_model_feats_final.pkl')
 
 #Different models are created for different months
 issue_months = [1, 2, 3, 4, 5, 6, 7]
@@ -32,7 +32,7 @@ EVAL = 100
 #Initiate and read data for CV/hyperparams tuning
 if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
     #Read min-max values of volume per site_id
-    min_max_site_id = pd.read_pickle('data\min_max_site_id_forecast.pkl')
+    min_max_site_id = joblib.load('data\min_max_site_id_dict_final.pkl')
     #Path to different distributions for different site_ids. Distributions
     #for different LOOCV years are in different files with year suffix
     PATH_DISTR = 'data\distr\distr_final_'
@@ -74,26 +74,27 @@ if RUN_CV == True:
     NUM_BOOST_ROUND = 1000
     #Run CV
     best_cv_per_month, best_cv_avg, num_rounds_months,\
-        best_interval_early_stopping = lgbm_cv(train,
-                                               labels,
-                                               NUM_BOOST_ROUND,
-                                               NUM_BOOST_ROUND_START,
-                                               EARLY_STOPPING_ROUNDS,
-                                               EARLY_STOPPING_STEP,
-                                               issue_months,
-                                               years_cv,
-                                               YEAR_RANGE,
-                                               feat_dict,
-                                               params_dict,
-                                               categorical,
-                                               min_max_site_id,
-                                               PATH_DISTR,
-                                               distr_perc_dict)
+        interval_coverage_all_months, best_interval_early_stopping =\
+            lgbm_cv(train,
+                    labels,
+                    NUM_BOOST_ROUND,
+                    NUM_BOOST_ROUND_START,
+                    EARLY_STOPPING_ROUNDS,
+                    EARLY_STOPPING_STEP,
+                    issue_months,
+                    years_cv,
+                    YEAR_RANGE,
+                    feat_dict,
+                    params_dict,
+                    categorical,
+                    min_max_site_id,
+                    PATH_DISTR,
+                    distr_perc_dict)
     print('CV result avg over months:', best_cv_avg)
     print('CV results per month with number of iters:', best_cv_per_month)
     print('Number of iters per month:', num_rounds_months)
-    print('Interval coverage per month:', best_interval_early_stopping)
-    print('Average interval coverage:', best_interval_early_stopping.mean())
+    print('Interval coverage per month:', interval_coverage_all_months)
+    print('Average interval coverage:', best_interval_early_stopping)
 
 #Hyperparameters tuning
 if RUN_HYPERPARAMS_TUNING == True:
@@ -132,7 +133,7 @@ if RUN_HYPERPARAMS_TUNING == True:
                        n_trials = N_TRIALS)
         #Save study from given month
         joblib.dump(study,
-                    f"results/hyperparams_tuning/study_forecast_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
+                    f"results/hyperparams_tuning/study_final_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
 
 #Train models for each month and keep them in different lists according to
 #quantiles

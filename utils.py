@@ -249,6 +249,29 @@ def print_summary_outliers_distribution(df: pd.DataFrame,
         print('\n')
 
 
+#Create a list of LOOCV years
+years_cv = [2004,
+            2005,
+            2006,
+            2007,
+            2008,
+            2009,
+            2010,
+            2011,
+            2012,
+            2013,
+            2014,
+            2015,
+            2016,
+            2017,
+            2018,
+            2019,
+            2020,
+            2021,
+            2022,
+            2023]
+
+
 #Create a dictionary with distributions to be fitted for distribution estimates
 all_distr_dict = {'alpha': stats.alpha,
  'anglit': stats.anglit,
@@ -403,7 +426,8 @@ def get_quantiles_from_distr(data: pd.DataFrame,
     Args:
         data (pd.DataFrame): Data to process, quantiles will be added to this df
         min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
-            for given site_id
+            for given site_id. It is a part of min_max_site_id_dict dictionary
+            with already specified LOOCV year
         all_distr_dict (dict): Available distributions
         path_distr (str): Path to values of distribution estimate parameters
             per each site_id already with amendments to distributions. Correct

@@ -100,6 +100,7 @@ def get_years_cv(year_range: bool) -> list:
                     2023]
     return years_cv
 
+
 def train_cv(train: pd.DataFrame,
              labels: pd.Series,
              train_cv_idxs: list,
@@ -173,6 +174,7 @@ def train_cv(train: pd.DataFrame,
     preds = lgb_models[fold].predict(train.loc[test_cv_idxs[fold], train_feat])
     return preds, lgb_models
 
+
 def lgbm_cv(train: pd.DataFrame,
             labels: pd.Series,
             num_boost_round: int,
@@ -185,7 +187,7 @@ def lgbm_cv(train: pd.DataFrame,
             train_feat_dict: dict,
             params_dict: dict,
             categorical: list,
-            min_max_site_id: pd.DataFrame,
+            min_max_site_id_dict: dict,
             path_distr: str,
             distr_perc_dict: dict) -> tuple[np.array, float, list, np.array]:
     """
@@ -215,8 +217,9 @@ def lgbm_cv(train: pd.DataFrame,
         params_dict (dict): LightGBM hyperparameters to use for different months.
             Key indicates month and value, a dictionary of hyperparameters
         categorical (list): Categorical features in the model
-        min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
-            for given site_id
+        min_max_site_id_dict (dict): Minimum and maximum historical volumes
+            for given site_id. It contains different DataFrames for different
+            LOOCV years, LOOCV years are used as the keys
         path_distr (str): Path to values of distribution estimate parameters
             per each site_id already with amendments to distributions. Different
             LOOCV years have different distribution files. They can be
@@ -349,12 +352,12 @@ def lgbm_cv(train: pd.DataFrame,
                 result_df['volume_90_lgbm'] = preds_90_lgbm
                 #Append quantile results
                 result_df = get_quantiles_from_distr(result_df,
-                                                     min_max_site_id,
+                                                     min_max_site_id_dict[year],
                                                      all_distr_dict,
                                                      f'{path_distr}{year}')
                 #Add min and max for site_id as 'max' and 'min' columns
                 result_df = pd.merge(result_df,
-                                     min_max_site_id,
+                                     min_max_site_id_dict[year],
                                      how = 'left',
                                      left_on = 'site_id',
                                      right_index = True)
@@ -494,7 +497,13 @@ def lgbm_cv(train: pd.DataFrame,
 
     #Add month imporance. July has less importance, as 25 out of 26 site_ids
     #have values for this month
-    month_importance = np.array([1, 1, 1, 1, 1, 1, 25/26])
+    if len(issue_months) == 7:
+        month_importance = np.array([1, 1, 1, 1, 1, 1, 25/26])
+    else:
+        #If not all months are being evaluated, add the same weights for each
+        #month for simplicity
+        month_importance = np.ones(len(issue_months))
+        
     #Sum weights
     sum_weights = np.sum(month_importance)
     #Ratio of importance to sum of all importancs
@@ -502,18 +511,20 @@ def lgbm_cv(train: pd.DataFrame,
     #Sum of results for different months multiplied by weights to get
     #a weighted average over different months
     result_final_avg = np.sum(best_cv_early_stopping[:, 0] * month_weights)
-
     #Get optimal number of rounds for each month separately
     num_rounds_months = list(best_cv_early_stopping[:, 1].astype('int'))
     #Get interval coverage from the best iteration
     best_interval_early_stopping = []
     for month in cv_results_all_months.keys():
         best_interval_early_stopping.append(results_coverage_all_months[month][-1])    
+    best_interval_early_stopping = np.array(best_interval_early_stopping)
+    interval_coverage_all_months = best_interval_early_stopping[:, 0]
     #Get weighted average also for interval
     best_interval_early_stopping =\
         np.sum(best_interval_early_stopping[:, 0] * month_weights)
     return best_cv_early_stopping, result_final_avg, num_rounds_months,\
-        best_interval_early_stopping
+        interval_coverage_all_months, best_interval_early_stopping
+
 
 def objective(trial: optuna.trial.Trial,
               train: pd.DataFrame,
@@ -523,7 +534,7 @@ def objective(trial: optuna.trial.Trial,
               year_range: bool,
               train_feat: list,
               categorical: list,
-              min_max_site_id: pd.DataFrame,
+              min_max_site_id_dict: dict,
               path_distr: str,
               distr_perc_dict: dict,
               num_boost_round: int,
@@ -548,8 +559,9 @@ def objective(trial: optuna.trial.Trial,
             (True) or just one test data per fold (False)
         train_feat (list): Features to use for this month
         categorical (list): Categorical features in the model
-        min_max_site_id (pd.DataFrame): Minimum and maximum historical volumes
-            for given site_id
+        min_max_site_id_dict (dict): Minimum and maximum historical volumes
+            for given site_id. It contains different DataFrames for different
+            LOOCV years, LOOCV years are used as the keys
         path_distr (str): Path to values of distribution estimate parameters
             per each site_id already with amendments to distributions. Different
             LOOCV years have different distribution files. They can be
@@ -575,7 +587,7 @@ def objective(trial: optuna.trial.Trial,
     #Set repetitive parameters created in model_params.py
     BAGGING_FREQ, OBJECTIVE, METRIC, VERBOSE, REG_ALPHA, MIN_GAIN_TO_SPLIT,\
         MIN_SUM_HESSIAN_IN_LEAF, FEATURE_FRACTION_SEED, SEED =\
-            joblib.load('data\general_hyperparams_forecast.pkl')
+            joblib.load('data\general_hyperparams_final.pkl')
     #Set minimial number of columns to one less than the number of columns.
     feature_fraction_min = (len(train_feat) - 1) / len(train_feat)
     #Set range of values for different hyperparameters
@@ -608,23 +620,24 @@ def objective(trial: optuna.trial.Trial,
     month = [month]
     #Perform CV calculation
     best_cv_per_month, best_cv_avg, num_rounds_months,\
-        best_interval_early_stopping = lgbm_cv(train,
-                                               labels,
-                                               num_boost_round,
-                                               num_boost_round_start,
-                                               early_stopping_rounds,
-                                               early_stopping_step,
-                                               month,
-                                               years_cv,
-                                               year_range,
-                                               train_feat_dict,
-                                               params_dict,
-                                               categorical,
-                                               min_max_site_id,
-                                               path_distr,
-                                               distr_perc_dict)
+        interval_coverage_all_months, best_interval_early_stopping =\
+            lgbm_cv(train,
+                    labels,
+                    num_boost_round,
+                    num_boost_round_start,
+                    early_stopping_rounds,
+                    early_stopping_step,
+                    month,
+                    years_cv,
+                    year_range,
+                    train_feat_dict,
+                    params_dict,
+                    categorical,
+                    min_max_site_id_dict,
+                    path_distr,
+                    distr_perc_dict)
     trial.set_user_attr("num_boost_rounds_best", num_rounds_months[0])
-    trial.set_user_attr("interval_coverage", best_interval_early_stopping[0])
+    trial.set_user_attr("interval_coverage", best_interval_early_stopping)
     return best_cv_avg
 
 def interval_coverage(actual: np.ndarray,
