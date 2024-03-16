@@ -211,11 +211,11 @@ joblib.dump(params_dict, 'data\lgbm_model_params_final.pkl')
 
 #Set different features for each month
 #Jan
-train_feat_1 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'nat_flow_11_to_10_ratio']
+train_feat_1 = ['site_id', 'WTEQ_DAILY_prev', 'issue_date_no_year',
+                'pdsi_prev']
 #Feb
 train_feat_2 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'discharge_cfs_mean_since_Oct_std', 'longitude']
+                'discharge_cfs_mean_since_Oct_std', 'longitude', 'pdsi_prev']
 #Mar
 train_feat_3 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
                 'discharge_cfs_mean_since_Oct_std', 'longitude']
@@ -225,15 +225,15 @@ train_feat_4 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_ye
 #May
 train_feat_5 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
                 'discharge_cfs_mean_since_Oct_std', 'longitude', 'WTEQ_DAILY_Apr_mean',
-                'discharge_cfs_mean_Apr_mean']
+                'discharge_cfs_mean_Apr_mean', 'pdsi_prev']
 #Jun
 train_feat_6 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
                 'discharge_cfs_mean_since_Oct_std', 'longitude', 'WTEQ_DAILY_Apr_mean',
-                'discharge_cfs_mean_Apr_mean', 'nat_flow_Apr_mean']
+                'discharge_cfs_mean_Apr_mean', 'nat_flow_Apr_mean', 'pdsi_prev']
 #Jul
 train_feat_7 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
                 'discharge_cfs_mean_std', 'longitude', 'nat_flow_Apr_mean',
-                'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean']
+                'WTEQ_DAILY_Apr_mean', 'discharge_cfs_mean_Apr_mean', 'pdsi_prev']
 
 #Keep all features in one dictionary
 train_feat_dict = {1: train_feat_1,

@@ -6,7 +6,8 @@ import joblib
 from utils import ReadAllData, years_cv, get_outliers
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
-preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly
+preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly,\
+get_prev_daily
 
 import time
 
@@ -77,6 +78,7 @@ issue_dates = submission_format['issue_date'].str[5:].unique()
 #list of months, it's just month from issue_dates' rows
 issue_months = pd.Series(issue_dates).str.split('-').str[0].astype('int')
 issue_days = pd.Series(issue_dates).str.split('-').str[1].astype('int')
+issue_days_unique = issue_days.unique()
 #Get length of train to facilitate rows creation with issue_date
 train_len_old = len(train)
 #Copy rows in train len(issue_dates) times to get number of rows ready for
@@ -195,13 +197,6 @@ for month in [10, 11]:
                             #as the earliest issue date is Jan 1
               f'{agg_col}_{month}'] = np.nan
 
-#Get ratio between month 11 and 10 (nat_flow_11_to_10_ratio)
-for month in [11]:
-    prev_month = 10
-    print(f'Ratio month {month} to {prev_month}')
-    train[f'nat_flow_{month}_to_{prev_month}_ratio'] =\
-        train[f'nat_flow_{month}'] / train[f'nat_flow_{prev_month}']
-
 #Snotel features
 snotel = preprocess_snotel(dfs.snotel,
                            dfs.sites_to_snotel_stations)
@@ -224,6 +219,17 @@ train = get_aggs_month_day(snotel,
                            'year_forecast',
                            suffix = '_Apr',
                            month_since = 4)
+
+#Append PDSI_prev (latest available average PDSI value)
+pdsi = dfs.pdsi.copy()
+train = get_prev_daily(df_aggs = pdsi,
+                       df_main = train,
+                       cols = ['pdsi_mean'],
+                       new_col_names = ['pdsi_prev'],
+                       date_col = 'pdsi_date',
+                       site_id_col = 'site_id',
+                       issue_days_unique = issue_days_unique,
+                       days_lag = 5)
 
 #Remove July issue_date for detroit_lake_inflow. This site's volume is
 #calculated for March-June period
