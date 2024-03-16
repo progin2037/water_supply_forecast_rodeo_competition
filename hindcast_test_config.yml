@@ -25,7 +25,7 @@ data_sources:
   #- name: cpc_outlooks
   # Drought/moisture conditions
   #- name: grace_indicators
-  #- name: pdsi
+  - name: pdsi
   # Teleconnections
   #- name: mjo
   #- name: nino_regions_sst

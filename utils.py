@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from IPython.display import display
 from scipy import stats
+import geopandas as gpd
+import xarray as xr
 import pickle
 from tqdm import tqdm
 from loguru import logger
@@ -126,6 +128,68 @@ def read_snotel(dir_name: str) -> pd.DataFrame:
     return snotel_df
 
 
+def get_pdsi_aggs(dir_name: str,
+                  geospatial: pd.DataFrame) -> pd.DataFrame:
+    """
+    Get statistics from PDSI data. PDSI is Palmer Drought Severity Index data
+    published every 5 days since 1980.
+
+    Args:
+        dir_name: A directory where PDSI aggr data as .pkl file should be saved
+        geospatial: geospatial.gpkg file from
+            https://www.drivendata.org/competitions/254/reclamation-water-supply-forecast-dev/data/
+            with station ids and their precise coordinates in POLYGON format
+    Returns:
+        pdsi_df (pd.DataFrame): PDSI data with statistics on different dates
+            and state ids
+    """
+    pdsi_full_path = f'{dir_name}\\pdsi_full.pkl'
+    if os.path.isfile(pdsi_full_path):
+        pdsi_df = pd.read_pickle(pdsi_full_path)
+    else:
+        logger.info("No aggregated PDSI data found. Starting creating a DataFrame with PDSI data.")
+        stats_pdsi = []    
+        #Get all paths with pdsi data
+        paths_pdsi = get_paths('data\pdsi', '.nc')
+        if not paths_pdsi:
+            logger.info("It seems that PDSI data wasn't downloaded. Download it and run ReadAllData again.")
+        for path in paths_pdsi:
+            print('\n', path)
+            #Read data from a specific year (forecast year)
+            pdsi_one_year = xr.open_dataset(path)
+            #Change encoding of coordinates
+            pdsi_one_year.rio.write_crs("epsg:4326", inplace=True)
+            #Iterate over rows from geospatial.gpkg
+            for _, geo in geospatial.iterrows():
+                site_id = geo.site_id
+                print(site_id)
+                #Keep only information from specific site_id
+                pdsi_data = pdsi_one_year.rio.clip([geo.geometry], pdsi_one_year.rio.crs)
+                #Get number of days from the year to iterate over them
+                num_days = pdsi_data.dims['day']
+                for num_day in range(num_days):
+                    #Get date
+                    date = pdsi_data.day[num_day].values
+                    #Mean, max, min, median values per day and site_id
+                    mean_val = np.nanmean(pdsi_data.daily_mean_palmer_drought_severity_index[num_day])
+                    max_val = np.nanmax(pdsi_data.daily_mean_palmer_drought_severity_index[num_day])
+                    min_val = np.nanmin(pdsi_data.daily_mean_palmer_drought_severity_index[num_day])
+                    med_val = np.nanmedian(pdsi_data.daily_mean_palmer_drought_severity_index[num_day])
+                    #Append results from a specificc forecast year - site_id combination
+                    stats_pdsi.append([site_id, date, mean_val, max_val, min_val, med_val])
+        #Create a dataframe from a list and save it to .pkl
+        if paths_pdsi:
+            pdsi_df = pd.DataFrame(stats_pdsi,
+                                   columns = ['site_id',
+                                              'pdsi_date',
+                                              'pdsi_mean',
+                                              'pdsi_max',
+                                              'pdsi_min',
+                                              'pdsi_median'])
+            pdsi_df.to_pickle('data\pdsi_full.pkl')
+    return pdsi_df
+
+
 class ReadAllData:
     """
     A class that loads and stores all data.
@@ -135,6 +199,7 @@ class ReadAllData:
     meta = pd.read_csv('data/metadata.csv', dtype={"usgs_id": "string"})
     submission_format = pd.read_csv('data/submission_format.csv')
     train_monthly_naturalized_flow = pd.read_csv('data/forecast_train_monthly_naturalized_flow.csv')
+    geospatial = gpd.read_file('data/geospatial.gpkg')
 
     site_ids_unique = list(train['site_id'].unique())
     years = [2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023]
@@ -155,10 +220,12 @@ class ReadAllData:
                  2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023]
     streamflow, not_found_usgs = merge_usgs_streamflow(site_ids_unique, years_all)
     
-    #Takes ~30 minutes for the first time
+    #Get snotel data. Takes ~30 minutes for the first time
     snotel = read_snotel('data\\snotel')
     sites_to_snotel_stations = pd.read_csv('data\\snotel\\sites_to_snotel_stations.csv')
     snotel_meta = pd.read_csv('data\\snotel\\station_metadata.csv')
+    #Get PDSI data. Should take 10-20 minutes for the first time
+    pdsi = get_pdsi_aggs('data', geospatial)
 
 
 def flatten_pandas_agg(df: pd.DataFrame) -> pd.DataFrame:
