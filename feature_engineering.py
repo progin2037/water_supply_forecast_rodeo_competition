@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from utils import flatten_pandas_agg
 
 def get_aggs_month_day(df_aggs: pd.DataFrame,
@@ -191,15 +192,14 @@ def get_prev_monthly(df_aggs: pd.DataFrame,
     #Add suffix to columns to aggregate on
     for feat, new_name in zip(cols, new_col_names):
         df_aggs[new_name] = df_aggs[feat]
-    #cols = [x + suffix for x in cols]
     #Make sure that site_id column from df_aggs is called site_id
     df_aggs.rename({site_id_col: 'site_id'}, axis = 1, inplace = True)
     #Create issue date one month and 5 days later to not look into future
     df_aggs[date_col] = pd.to_datetime(df_aggs[date_col])
     #Get year, month, day
-    df_aggs.year = df_aggs[date_col].dt.year
-    df_aggs.month = df_aggs[date_col].dt.month
-    df_aggs.day = df_aggs[date_col].dt.day
+    df_aggs['year'] = df_aggs[date_col].dt.year
+    df_aggs['month'] = df_aggs[date_col].dt.month
+    df_aggs['day'] = df_aggs[date_col].dt.day
     #Get date with day_start
     df_aggs['issue_date_var'] = pd.to_datetime(dict(year = df_aggs.year,
                                                     month = df_aggs.month,
@@ -225,6 +225,99 @@ def get_prev_monthly(df_aggs: pd.DataFrame,
                        how = 'left',
                        on = ['site_id', 'issue_date_var'])
     df_main.drop('issue_date_var', axis = 1, inplace = True)
+    return df_main
+
+
+def get_prev_daily(df_aggs: pd.DataFrame,
+                   df_main: pd.DataFrame,
+                   cols: list,
+                   new_col_names: list,
+                   date_col: str,
+                   site_id_col: str,
+                   issue_days_unique: np.array,
+                   days_lag: int) -> pd.DataFrame:
+    """
+    Get previous available value before issue date from a monthly DataFrame.
+    This function works appropriately only if lag day isn't greater than 6 (for
+    February) and 8 (for 30-day long months).
+    
+    Args:
+        df_aggs (pd.DataFrame): A DataFrame to get aggregates from
+        df_main (pd.DataFrame): The main DataFrame to be merged with df_aggs
+        cols (list): Columns to get previous available values from (from df_aggs)
+        new_col_names (list): New names of columns to append
+        date_col (str): df_aggs date column to aggregate on
+        site_id_col (str): A column from df_aggs with site_id information
+        issue_days_unique (list): A list of issue days from df_main. It should
+            have values of 1, 8, 15, 22
+        days_lag (int): How many days should be added to date from df_aggs to
+            be constistent with issue dates from df_main
+    Returns:
+        df_main (pd.DataFrame): The main DataFrame with appended prev columns
+    """
+    #Add suffix to columns to aggregate on
+    for feat, new_name in zip(cols, new_col_names):
+        df_aggs[new_name] = df_aggs[feat]
+    #Make sure that site_id column from df_aggs is called site_id
+    df_aggs.rename({site_id_col: 'site_id'}, axis = 1, inplace = True)
+    #Create issue date one month and 5 days later to not look into future
+    df_aggs[date_col] = pd.to_datetime(df_aggs[date_col])
+    #Get year, month, day
+    df_aggs['year'] = df_aggs[date_col].dt.year
+    df_aggs['month'] = df_aggs[date_col].dt.month
+    df_aggs['day'] = df_aggs[date_col].dt.day
+    #Get the earliest date when values from df_aggs don't look into future
+    df_aggs['issue_date_var'] = df_aggs[date_col] + pd.Timedelta(days = days_lag)
+    #Add one month as a starting point only if it hasn't been yet appended
+    df_aggs['issue_date_var'] = df_aggs.issue_date_var.astype('str')
+    #Get year, month and day from issue_date_var
+    date_issue_split = df_aggs.issue_date_var.str.split('-')
+    df_aggs['year_issue'] = date_issue_split.str[0].astype('int')
+    df_aggs['month_issue'] = date_issue_split.str[1].astype('int')
+    df_aggs['day_issue'] = date_issue_split.str[2].astype('int')
+    #Get earliest matching day from df_main's issue days for each row.
+    #Days without looking into future were already selected and now the closest
+    #day from df_main issue_dates will be determined to match with df_main 
+    df_aggs['issue_date_day'] = np.nan
+    for issue_day in issue_days_unique:
+        df_aggs.loc[(df_aggs.issue_date_day.isna()) &
+                    (df_aggs.day_issue <= issue_day),
+                    'issue_date_day'] = issue_day
+    #Add month and year for merging
+    df_aggs['issue_date_month'] = df_aggs.month_issue
+    df_aggs['issue_date_year'] = df_aggs.year_issue
+    #If issue date should be from the next month (day_issue>22), set issue_day
+    #to 1 and add one month
+    df_aggs.loc[(df_aggs.issue_date_day.isna()), 'issue_date_month'] =\
+        df_aggs.issue_date_month + 1
+    df_aggs.loc[(df_aggs.issue_date_day.isna()), 'issue_date_day'] = 1
+    #Amendment to issue_date_month if it was December
+    df_aggs.loc[df_aggs.issue_date_month == 13, 'issue_date_year'] =\
+        df_aggs.issue_date_year + 1
+    df_aggs.loc[df_aggs.issue_date_month == 13, 'issue_date_month'] = 1
+    #Get final issue_date to merge with df_main
+    df_aggs['issue_date_var'] = pd.to_datetime(
+        df_aggs.issue_date_year.astype('str') + '-' +\
+        df_aggs.issue_date_month.astype('int').astype('str') + '-' +\
+        df_aggs.issue_date_day.astype('int').astype('str')).astype('str')
+    #Make sure that values are correctly sorted
+    df_aggs = df_aggs.sort_values(['site_id', 'issue_date_var']).reset_index(drop = True)
+    #Get last observation for given issue dates. This way it will be the latest
+    #available observation for each issue data. Keep only indexes
+    idx_to_keep = df_aggs[['site_id', 'issue_date_var']].\
+        drop_duplicates(keep = 'last').index
+    #Get rows to merge with train
+    df_to_merge = df_aggs.loc[idx_to_keep]
+    #Get columns to merge
+    feats_to_keep = ['site_id', 'issue_date_var'] + new_col_names
+    df_to_merge = df_to_merge[feats_to_keep]
+    #Change issue_date name to be consistent with df_main convention
+    df_to_merge.rename({'issue_date_var': 'issue_date'}, axis = 1, inplace = True)
+    #Merge with df_main
+    df_main = pd.merge(df_main,
+                       df_to_merge,
+                       how = 'left',
+                       on = ['site_id', 'issue_date'])
     return df_main
 
 
