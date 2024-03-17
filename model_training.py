@@ -39,7 +39,7 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
     #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
     #different months
     distr_perc_dict = {1: 0.6,
-                       2: 0.4,
+                       2: 0.45,
                        3: 0.4,
                        4: 0.3,
                        5: 0.25,
@@ -100,15 +100,11 @@ if RUN_CV == True:
 if RUN_HYPERPARAMS_TUNING == True:
     #Set number of hyperparameters optimization iterations
     N_TRIALS = 80
+    #Maximum number of LightGBM model iterations
+    NUM_BOOST_ROUND = 1000
     #All months should take 15-40 hours to run. It is recommended to optimize
     #one year at a time
     for issue_month in tqdm(issue_months):
-        #Maximum number of LightGBM model iterations
-        if issue_month in [2, 3, 4]:
-            #Month 2, 3, 4 used lower threshold
-            NUM_BOOST_ROUND = 600
-        else:
-            NUM_BOOST_ROUND = 1000
         #Choose features from given month
         train_feat = feat_dict[issue_month]
         sampler = TPESampler(seed = 2112) #to get the same results all the time
