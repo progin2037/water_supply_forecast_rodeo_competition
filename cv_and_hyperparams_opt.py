@@ -175,6 +175,166 @@ def train_cv(train: pd.DataFrame,
     return preds, lgb_models
 
 
+def nat_flow_sum_clipping(train: pd.DataFrame,
+                          result_df: pd.DataFrame,
+                          nat_flow_sum_col: str,
+                          test_cv_idxs: list,
+                          fold: int,
+                          month: int,
+                          multip_10: float,
+                          multip_50: float,
+                          multip_90: float,
+                          multip_10_thres: float=1.0,
+                          multip_50_thres: float=1.0,
+                          multip_90_thres: float=1.0,
+                          multip_10_detroit: float=1.0,
+                          multip_50_detroit: float=1.0,
+                          multip_90_detroit: float=1.0,
+                          multip_10_thres_detroit: float=1.0,
+                          multip_50_thres_detroit: float=1.0,
+                          multip_90_thres_detroit: float=1.0) -> pd.DataFrame:
+    """
+    Amendments to results based on naturalized flow. If naturalized flow since
+    April (for most site_ids) up to selected month with chosen multipliers is
+    greater than predicted volume for different quantiles, add a correction
+    to those predicted volumes.
+    
+    Args:
+        train (pd.DataFrame): Whole training data before dividing into CV folds
+        result_df (pd.DataFrame): This fold results before clipping
+        nat_flow_sum_col (str): A column name for sums of naturalized flow
+        test_cv_idxs (list): Indexes of test data for all folds
+        fold (int): Fold from the given iteration. Used to get correct train
+            and test indexes
+        month (int): A month to make clipping for
+        multip_10 (float): A multiplier for a given nat_flow_sum for Q0.1
+        multip_50 (float): A multiplier for a given nat_flow_sum for Q0.5
+        multip_90 (float): A multiplier for a given nat_flow_sum for Q0.9
+        multip_10_thres (float): A threshold for a given nat_flow_sum column
+            for Q0.1. Change volume prediction if current volume is less than
+            nat_flow_sum multiplied by this threshold
+        multip_50_thres (float): A threshold for a given nat_flow_sum column
+            for Q0.5. Change volume prediction if current volume is less than
+            nat_flow_sum multiplied by this threshold
+        multip_90_thres (float): A threshold for a given nat_flow_sum column
+            for Q0.9. Change volume prediction if current volume is less than
+            nat_flow_sum multiplied by this threshold
+        multip_10_detroit (float): A multiplier for a given nat_flow_sum for
+            Q0.1 and detroit_lake_inflow site_id. Defaulted to 1.0, so it
+            doesn't have to be passed for July with missing detroit site_id
+        multip_50_detroit (float): A multiplier for a given nat_flow_sum for
+            Q0.5 and detroit_lake_inflow site_id. Defaulted to 1.0, so it
+            doesn't have to be passed for July with missing detroit site_id
+        multip_90_detroit (float): A multiplier for a given nat_flow_sum for
+            Q0.9 and detroit_lake_inflow site_id. Defaulted to 1.0, so it
+            doesn't have to be passed for July with missing detroit site_id
+        multip_10_thres_detroit (float): A threshold for a given nat_flow_sum
+            column for Q0.1 and detroit_lake_inflow site_id. Change volume
+            prediction if current volume is less than nat_flow_sum multiplied
+            by this threshold. Defaulted to 1.0, so it
+            doesn't have to be passed for July with missing detroit site_id
+        multip_50_thres_detroit (float): A threshold for a given nat_flow_sum
+            column for Q0.5 and detroit_lake_inflow site_id. Change volume
+            prediction if current volume is less than nat_flow_sum multiplied
+            by this threshold. Defaulted to 1.0, so it doesn't have to be
+            passed for July with missing detroit site_id
+        multip_90_thres_detroit (float): A threshold for a given nat_flow_sum
+            column for Q0.9 and detroit_lake_inflow site_id. Change volume
+            prediction if current volume is less than nat_flow_sum multiplied
+            by this threshold. Defaulted to 1.0, so it doesn't have to be
+            passed for July with missing detroit site_id
+        
+    Returns:
+        results_clipped (pd.DataFrame): Results with added nat_flow_sum clipping
+    """
+    #Add nat_flow_sum from train
+    results_clipped = pd.merge(result_df,
+                              train.loc[(train.index.isin(test_cv_idxs[fold])),
+                                        ['site_id', 'issue_date_no_year',
+                                         nat_flow_sum_col]],
+                              how = 'left',
+                              on = ['site_id', 'issue_date_no_year'])
+    #Get nat_flow_sum to volume ratios
+    results_clipped['volume_10_nat_flow_sum_ratio'] =\
+        results_clipped.volume_10 / results_clipped[nat_flow_sum_col]
+    results_clipped['volume_50_nat_flow_sum_ratio'] =\
+        results_clipped.volume_50 / results_clipped[nat_flow_sum_col]
+    results_clipped['volume_90_nat_flow_sum_ratio'] =\
+        results_clipped.volume_90 / results_clipped[nat_flow_sum_col]
+    #Multiply by multiplier if < nat_flow_sum or multiply additionally by volume_nat_flow_sum_ratio
+    #if volume was greater than nat_flow_sum but within boundaries for condition execution
+    results_clipped['volume_10_with_mult'] =\
+        results_clipped.apply(lambda x: max(x[nat_flow_sum_col] * multip_10,
+                                        x[nat_flow_sum_col] * multip_10 *\
+                                            x.volume_10_nat_flow_sum_ratio),
+                              axis = 1)
+    results_clipped['volume_50_with_mult'] =\
+        results_clipped.apply(lambda x: max(x[nat_flow_sum_col] * multip_50,
+                                        x[nat_flow_sum_col] * multip_50 *\
+                                            x.volume_50_nat_flow_sum_ratio),
+                              axis = 1)
+    results_clipped['volume_90_with_mult'] =\
+        results_clipped.apply(lambda x: max(x[nat_flow_sum_col] * multip_90,
+                                        x[nat_flow_sum_col] * multip_90 *\
+                                            x.volume_90_nat_flow_sum_ratio),
+                              axis = 1)
+    if month == 7:
+        #Don't process detroit_lake_inflow for month 7 where it doesn't exist
+        #Change volume values with volume with multiplier if withing boundaries
+        results_clipped.loc[
+            results_clipped.volume_10 < results_clipped[nat_flow_sum_col] * multip_10_thres,
+            'volume_10'] = results_clipped.volume_10_with_mult
+        results_clipped.loc[
+            results_clipped.volume_50 < results_clipped[nat_flow_sum_col] * multip_50_thres,
+            'volume_50'] = results_clipped.volume_50_with_mult
+        results_clipped.loc[
+            results_clipped.volume_90 < results_clipped[nat_flow_sum_col] * multip_90_thres,
+            'volume_90'] = results_clipped.volume_90_with_mult
+    if month in [5, 6]:
+        results_clipped['volume_10_with_mult_detroit'] =\
+            results_clipped.apply(
+                lambda x: max(x[nat_flow_sum_col] * multip_10_detroit,
+                              x[nat_flow_sum_col] * multip_10_detroit *\
+                                  x.volume_10_nat_flow_sum_ratio), axis = 1)
+        results_clipped['volume_50_with_mult_detroit'] =\
+            results_clipped.apply(
+                lambda x: max(x[nat_flow_sum_col] * multip_50_detroit,
+                              x[nat_flow_sum_col] * multip_50_detroit *\
+                                  x.volume_50_nat_flow_sum_ratio), axis = 1)
+        results_clipped['volume_90_with_mult_detroit'] =\
+            results_clipped.apply(
+                lambda x: max(x[nat_flow_sum_col] * multip_90_detroit,
+                              x[nat_flow_sum_col] * multip_90_detroit *\
+                                  x.volume_90_nat_flow_sum_ratio), axis = 1)        
+        #Change volume values with volume with multiplier if within boundaries
+        results_clipped.loc[
+            (results_clipped.volume_10 < results_clipped[nat_flow_sum_col] * multip_10_thres_detroit) &
+            (results_clipped.site_id == 'detroit_lake_inflow'),
+            'volume_10'] = results_clipped.volume_10_with_mult_detroit
+        results_clipped.loc[
+            (results_clipped.volume_10 < results_clipped[nat_flow_sum_col] * multip_10_thres) &
+            (results_clipped.site_id != 'detroit_lake_inflow'),
+            'volume_10'] = results_clipped.volume_10_with_mult
+        
+        results_clipped.loc[
+            (results_clipped.volume_50 < results_clipped[nat_flow_sum_col] * multip_50_thres_detroit) &
+            (results_clipped.site_id == 'detroit_lake_inflow'),
+            'volume_50'] = results_clipped.volume_50_with_mult_detroit
+        results_clipped.loc[
+            (results_clipped.volume_50 < results_clipped[nat_flow_sum_col] * multip_50_thres) &
+            (results_clipped.site_id != 'detroit_lake_inflow'),
+            'volume_50'] = results_clipped.volume_50_with_mult
+        
+        results_clipped.loc[
+            (results_clipped.volume_90 < results_clipped[nat_flow_sum_col] * multip_90_thres_detroit) &
+            (results_clipped.site_id == 'detroit_lake_inflow'),
+            'volume_90'] = results_clipped.volume_90_with_mult_detroit
+        results_clipped.loc[
+            (results_clipped.volume_90 < results_clipped[nat_flow_sum_col] * multip_90_thres) &
+            (results_clipped.site_id != 'detroit_lake_inflow'),
+            'volume_90'] = results_clipped.volume_90_with_mult
+    return results_clipped
+
 def lgbm_cv(train: pd.DataFrame,
             labels: pd.Series,
             num_boost_round: int,
@@ -412,9 +572,74 @@ def lgbm_cv(train: pd.DataFrame,
                 results_90.append(result_90)
                 #Get competition metric
                 cv_result = 2 * (result_10 + result_50 + result_90) / 3
+
+                ###############################################################
+                #nat_flow_sum clipping
+                ###############################################################
+                results_clipped = result_df.copy()
+                #Add clipping to Jul based on Apr-Jun nat_flow_sum 
+                if month == 7:
+                    results_clipped = nat_flow_sum_clipping(
+                        train = train,
+                        result_df = results_clipped,
+                        nat_flow_sum_col = 'nat_flow_sum_Apr_Jun',
+                        test_cv_idxs = test_cv_idxs,
+                        fold = fold,
+                        month = 7,
+                        multip_10 = 1.05,
+                        multip_50 = 1.05,
+                        multip_90 = 1.05,
+                        multip_10_thres = 1.05,
+                        multip_50_thres = 1.05,
+                        multip_90_thres = 1.05)
+                #Add clipping to Jun based on Apr-May nat_flow_sum 
+                if month == 6:
+                    results_clipped = nat_flow_sum_clipping(
+                        train = train,
+                        result_df = results_clipped,
+                        nat_flow_sum_col = 'nat_flow_sum_Apr_May',
+                        test_cv_idxs = test_cv_idxs,
+                        fold = fold,
+                        month = 6,
+                        multip_10 = 1.05,
+                        multip_50 = 1.15,
+                        multip_90 = 1.15,
+                        multip_10_thres = 1.05,
+                        multip_50_thres = 1.15,
+                        multip_90_thres = 1.15,
+                        multip_10_detroit = 1.05,
+                        multip_50_detroit = 1.1,
+                        multip_90_detroit = 1.1,
+                        multip_10_thres_detroit = 1.05,
+                        multip_50_thres_detroit = 1.1,
+                        multip_90_thres_detroit = 1.1)
+                #Add clipping to Jul based on Apr nat_flow_sum
+                if month == 5:
+                    results_clipped = nat_flow_sum_clipping(
+                        train = train,
+                        result_df = results_clipped,
+                        nat_flow_sum_col = 'nat_flow_sum_Apr_Apr',
+                        test_cv_idxs = test_cv_idxs,
+                        fold = fold,
+                        month = 5,
+                        multip_10 = 1.2,
+                        multip_50 = 1.25,
+                        multip_90 = 1.3,
+                        multip_10_thres = 1.2,
+                        multip_50_thres = 1.4,
+                        multip_90_thres = 1.5,
+                        multip_10_detroit = 1.2, #1.05
+                        multip_50_detroit = 1.2,
+                        multip_90_detroit = 1.2,
+                        multip_10_thres_detroit = 1.2,
+                        multip_50_thres_detroit = 1.2,
+                        multip_90_thres_detroit = 1.2)
+
+                ###############################################################
+                #Final clipping
+                ###############################################################
                 #Do the final clipping to make sure that the restrictions are
                 #met after taking weighted average for volume_10 and volume_90
-                results_clipped = result_df.copy()
                 results_clipped.loc[results_clipped.volume_90 < results_clipped.volume_50,
                                     'volume_50'] = results_clipped.volume_90
                 results_clipped.loc[results_clipped.volume_50 < results_clipped.volume_10,

@@ -7,7 +7,7 @@ from utils import ReadAllData, years_cv, get_outliers
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
 preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly,\
-get_prev_daily
+get_prev_daily, nat_flow_sum_cumul_since_apr
 
 import time
 
@@ -151,7 +151,7 @@ train = get_aggs_month_day(streamflow,
                            suffix = '_Apr',
                            month_since = 4)
 
-#Get monthly naturalized flow features 
+#Get monthly naturalized flow features
 train_monthly_naturalized_flow = preprocess_monthly_naturalized_flow(dfs.train_monthly_naturalized_flow)
 
 #Get naturalized flow from previous month
@@ -175,6 +175,26 @@ train = get_aggs_month(train_monthly_naturalized_flow,
                        'forecast_year',
                        suffix = '_Apr',
                        month_since = 4)
+
+#Get cumulative naturalized flows since April. It will be used in postprocessing.
+#Get naturalized flow sum from April
+train = nat_flow_sum_cumul_since_apr(
+    train_monthly_naturalized_flow = train_monthly_naturalized_flow,
+    df_main = train,
+    new_col_name = 'nat_flow_sum_Apr_Apr',
+    month_end = 4)
+#Get naturalized flow sum between April and May
+train = nat_flow_sum_cumul_since_apr(
+    train_monthly_naturalized_flow = train_monthly_naturalized_flow,
+    df_main = train,
+    new_col_name = 'nat_flow_sum_Apr_May',
+    month_end = 5)
+#Get naturalized flow sum between April and June
+train = nat_flow_sum_cumul_since_apr(
+    train_monthly_naturalized_flow = train_monthly_naturalized_flow,
+    df_main = train,
+    new_col_name = 'nat_flow_sum_Apr_Jun',
+    month_end = 6)
 
 #Create nat_flow_10 and nat_flow_11 for nat_flow_11_to_10_ratio creation
 cols = ['site_id', 'forecast_year', 'nat_flow']
@@ -202,12 +222,11 @@ snotel = preprocess_snotel(dfs.snotel,
                            dfs.sites_to_snotel_stations)
 
 #Get previous value of WTEQ_DAILY
-snotel['WTEQ_DAILY_prev'] = snotel.groupby(['site_id', 'year_forecast'])['WTEQ_DAILY'].shift()
-#Merge with train
 train = pd.merge(train,
-                 snotel[['WTEQ_DAILY_prev', 'site_id', 'year', 'month', 'day']],
+                 snotel[['WTEQ_DAILY', 'site_id', 'issue_date']],
                  how = 'left',
-                 on = ['site_id', 'year', 'month', 'day'])
+                 on = ['site_id', 'issue_date'])
+train.rename({'WTEQ_DAILY': 'WTEQ_DAILY_prev'}, axis = 1, inplace = True)
 
 #WTEQ_DAILY_Apr_mean
 train = get_aggs_month_day(snotel,

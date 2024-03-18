@@ -1,6 +1,7 @@
 The changelog was created to keep track of most important changes between different stages of the competition (Hindcast Stage, Forecast Stage, Final Prize Stage).
 
 # Changes between Forecast Stage and Final Prize Stage
+* added additional clipping with nat_flow_sum since April
 * added pdsi_prev, removed nat_flow_11_to_10_ratio features
 * removed outliers removal from full data processing (kept for distribution estimates and min_max_site_id_dict_final)
 * added min_max_site_id_dict_final - min/max values for site_id without a year from the given LOOCV fold (20 DataFrames in a dictionary, each for one LOOCV year)

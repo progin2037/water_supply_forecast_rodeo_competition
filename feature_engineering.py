@@ -38,6 +38,7 @@ def get_aggs_month_day(df_aggs: pd.DataFrame,
     Returns:
         df_main (pd.DataFrame): The main DataFrame with appended columns
     """
+    df_aggs = df_aggs.copy()
     #Add suffix to columns to aggregate on
     for feat in cols:
         df_aggs[f'{feat}{suffix}'] = df_aggs[feat]
@@ -119,6 +120,7 @@ def get_aggs_month(df_aggs: pd.DataFrame,
     Returns:
         df_main (pd.DataFrame): The main DataFrame with appended columns
     """
+    df_aggs = df_aggs.copy()
     #Add suffix to columns to aggregate on
     for feat in cols:
         df_aggs[f'{feat}{suffix}'] = df_aggs[feat]
@@ -189,6 +191,7 @@ def get_prev_monthly(df_aggs: pd.DataFrame,
     Returns:
         df_main (pd.DataFrame): The main DataFrame with appended prev columns
     """
+    df_aggs = df_aggs.copy()
     #Add suffix to columns to aggregate on
     for feat, new_name in zip(cols, new_col_names):
         df_aggs[new_name] = df_aggs[feat]
@@ -255,6 +258,7 @@ def get_prev_daily(df_aggs: pd.DataFrame,
     Returns:
         df_main (pd.DataFrame): The main DataFrame with appended prev columns
     """
+    df_aggs = df_aggs.copy()
     #Add suffix to columns to aggregate on
     for feat, new_name in zip(cols, new_col_names):
         df_aggs[new_name] = df_aggs[feat]
@@ -354,6 +358,64 @@ def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataF
     return monthly_naturalized_flow
 
 
+def nat_flow_sum_cumul_since_apr(train_monthly_naturalized_flow: pd.DataFrame,
+                                 df_main: pd.DataFrame,
+                                 new_col_name: str,
+                                 month_end: int) -> pd.DataFrame:
+    """
+    Get sum of naturalized flow for a given site_id between April and selected
+    month. It won't be used as a feature. It will be used in postprocessing in
+    model training pipeline to make sure that predictions made for Apr-Jul
+    volumes aren't less than those from Apr/Apr-May/Apr-Jun. There is no need
+    for filling missing values for df_main data from previous months, as
+    the transformations will be done only for months without looking into future.
+    
+    Args:
+        train_monthly_naturalized_flow (pd.DataFrame): Monthly naturalized flow
+            after some initial preprocessing
+        df_main (pd.DataFrame): The main DataFrame to be merged with a sum of
+            naturalized flow from selected months
+        new_col_name (str): A column name for the new column with a sum of
+            naturalized flow from selected months
+        month_end (int): Up to which month the sum of naturalized flow should
+            be calculated
+    Returns:
+        df_main (pd.DataFrame): The main DataFrame with appended cumulative
+            naturalized flow
+    """
+    #Get sum of monthly naturalized flow between April and selected month for
+    #a given site_id-forecast_year combination. Don't calculate it for
+    #pecos_r_nr_pecos site_id for now 
+    nat_flow_sum = train_monthly_naturalized_flow[
+        (train_monthly_naturalized_flow.month.between(4, month_end)) &
+        (train_monthly_naturalized_flow.site_id != 'pecos_r_nr_pecos')].\
+        groupby(['site_id', 'forecast_year'])['nat_flow'].sum().reset_index()
+    #Calculate pecos_r_nr_pecos separately. For this site_id, naturalized flow
+    #between March and July is calcluated in the competition, so use
+    #nat_flow_sum since March for this site_id.
+    #detroit_lake_inflow doesn't need similar change, Apr-Jun volume is
+    #predicted for this site_id but it's safe to do it even for July as
+    #train_monthly_naturalized_flow dataset doesn't include July for this site
+    nat_flow_sum_pecos = train_monthly_naturalized_flow[
+        (train_monthly_naturalized_flow.month.between(3, month_end)) &
+        (train_monthly_naturalized_flow.site_id == 'pecos_r_nr_pecos')].\
+        groupby(['site_id', 'forecast_year'])['nat_flow'].sum().reset_index()
+    #Merge pecos with other site_ids
+    nat_flow_sum = pd.concat([nat_flow_sum, nat_flow_sum_pecos]).reset_index(drop = True)
+    #Change nat_flow 0 to nan
+    nat_flow_sum.loc[nat_flow_sum.nat_flow == 0, 'nat_flow'] = np.nan
+    #Set name for column to add to df_main
+    nat_flow_sum = nat_flow_sum.rename({'nat_flow': new_col_name}, axis = 1)
+    #Merge with df_main
+    df_main = pd.merge(df_main,
+             nat_flow_sum,
+             how = 'left',
+             left_on = ['site_id', 'year'],
+             right_on = ['site_id', 'forecast_year'])
+    df_main.drop('forecast_year', axis = 1, inplace = True)
+    return df_main
+
+
 def preprocess_snotel(snotel: pd.DataFrame,
                       sites_to_snotel_stations: pd.DataFrame) -> pd.DataFrame:
     """
@@ -389,4 +451,7 @@ def preprocess_snotel(snotel: pd.DataFrame,
     snotel['year_forecast'] = snotel.year
     snotel.loc[snotel['month'].astype(int).between(10, 12), 'year_forecast'] =\
         snotel.year_forecast + 1
+    #Add issue date with a 1 day lag to be able to merge easily with train data
+    snotel['issue_date'] = pd.to_datetime(snotel.date) + pd.DateOffset(days = 1)
+    snotel['issue_date'] = snotel.issue_date.astype('str')
     return snotel
