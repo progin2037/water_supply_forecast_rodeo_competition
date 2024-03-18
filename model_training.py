@@ -50,10 +50,10 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
     #Initiate early stopping from this iteration
     NUM_BOOST_ROUND_START = 100
     #How many times in a row early stopping can be met before stopping training
-    EARLY_STOPPING_ROUNDS = 2
+    EARLY_STOPPING_ROUNDS = 3
     #Number of iterations when Early stopping is performed. 20 means that it's
     #done every 20 iterations, i,e. after 100, 120, 140, ... iters
-    EARLY_STOPPING_STEP = 20
+    EARLY_STOPPING_STEP = 10
     #Get years for different CV folds
     years_cv = get_years_cv(YEAR_RANGE)
 
@@ -73,7 +73,7 @@ if RUN_CV == True:
     #Maximum number of LightGBM model iterations
     NUM_BOOST_ROUND = 2000
     #Run CV
-    best_cv_per_month, best_cv_avg, num_rounds_months,\
+    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
         interval_coverage_all_months, best_interval_early_stopping =\
             lgbm_cv(train,
                     labels,
@@ -91,6 +91,7 @@ if RUN_CV == True:
                     PATH_DISTR,
                     distr_perc_dict)
     print('CV result avg over months:', best_cv_avg)
+    print('CV RMS results per month with number of iters:', best_cv_per_month)
     print('CV results per month with number of iters:', best_cv_per_month)
     print('Number of iters per month:', num_rounds_months)
     print('Interval coverage per month:', interval_coverage_all_months)
@@ -99,7 +100,7 @@ if RUN_CV == True:
 #Hyperparameters tuning
 if RUN_HYPERPARAMS_TUNING == True:
     #Set number of hyperparameters optimization iterations
-    N_TRIALS = 80
+    N_TRIALS = 100
     #Maximum number of LightGBM model iterations
     NUM_BOOST_ROUND = 2000
     #All months should take 15-40 hours to run. It is recommended to optimize
@@ -107,7 +108,7 @@ if RUN_HYPERPARAMS_TUNING == True:
     for issue_month in tqdm(issue_months):
         #Choose features from given month
         train_feat = feat_dict[issue_month]
-        sampler = TPESampler(seed = 2112) #to get the same results all the time
+        sampler = TPESampler(seed = 22) #to get the same results all the time
         #Perform hyperparameters tuning. Ranges of values to select from are
         #already chosen in the function
         study = optuna.create_study(direction = 'minimize', sampler = sampler)

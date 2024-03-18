@@ -425,8 +425,9 @@ def lgbm_cv(train: pd.DataFrame,
         cv_result_avg_fold_prev = np.inf
         #Initialize number of early stopping conditions met so far with 0
         num_prev_iters_better = 0
-        #All [avg fold result-number of LightGBM iterations] from given month.
-        #All LGBM iters after each early_stopping_step have a row in the list
+        #All [avg RMS fold result-avg fold result-number of LightGBM iterations]
+        #from given month. All LGBM iters after each early_stopping_step have
+        #a row in the list
         cv_results_avg_fold = []
         #Similarly for interval coverage
         results_coverage_avg_fold = []
@@ -672,23 +673,32 @@ def lgbm_cv(train: pd.DataFrame,
                 results_coverage.append(result_coverage)
             #Average results over different folds for given model iteration
             cv_result_avg_fold = np.mean(cv_results)
+            #Average RMS (root mean square) results over different folds for
+            #given model iteration
+            cv_result_rms = np.array(cv_results) ** 2
+            cv_result_avg_fold_rms =\
+                np.sqrt(np.sum(cv_result_rms) / len(cv_result_rms))
+            
             #Do the same for interval coverage
             result_coverage_avg_fold = np.mean(results_coverage)
             #Keep track of early stopping condition if result is poorer than
             #in the previous early stopping check (early_stopping_step before)
-            if cv_result_avg_fold > cv_result_avg_fold_prev:
+            if cv_result_avg_fold_rms > cv_result_avg_fold_prev:
                 num_prev_iters_better += 1
             else:
                 #If new result is better, use new result in next early stopping
                 #check. Reset num_prev_iters_better to 0
-                cv_result_avg_fold_prev = cv_result_avg_fold
+                cv_result_avg_fold_prev = cv_result_avg_fold_rms
                 num_prev_iters_better = 0
+            print(f'Avg RMS result all folds for {num_boost_round_month} trees:',
+                  cv_result_avg_fold_rms)
             print(f'Avg result all folds for {num_boost_round_month} trees:',
                   cv_result_avg_fold)
             print(f'Avg interval coverage all folds for {num_boost_round_month} trees:',
                   result_coverage_avg_fold)
             #Append number of boosting iterations to average results
-            cv_results_avg_fold.append([cv_result_avg_fold,
+            cv_results_avg_fold.append([cv_result_avg_fold_rms,
+                                        cv_result_avg_fold,
                                         num_boost_round_month])
             #Do the same for interval coverage
             results_coverage_avg_fold.append([result_coverage_avg_fold,
@@ -735,9 +745,10 @@ def lgbm_cv(train: pd.DataFrame,
     month_weights = month_importance / sum_weights
     #Sum of results for different months multiplied by weights to get
     #a weighted average over different months
-    result_final_avg = np.sum(best_cv_early_stopping[:, 0] * month_weights)
+    result_final_rms_avg = np.sum(best_cv_early_stopping[:, 0] * month_weights)
+    result_final_avg = np.sum(best_cv_early_stopping[:, 1] * month_weights)
     #Get optimal number of rounds for each month separately
-    num_rounds_months = list(best_cv_early_stopping[:, 1].astype('int'))
+    num_rounds_months = list(best_cv_early_stopping[:, 2].astype('int'))
     #Get interval coverage from the best iteration
     best_interval_early_stopping = []
     for month in cv_results_all_months.keys():
@@ -747,8 +758,8 @@ def lgbm_cv(train: pd.DataFrame,
     #Get weighted average also for interval
     best_interval_early_stopping =\
         np.sum(best_interval_early_stopping[:, 0] * month_weights)
-    return best_cv_early_stopping, result_final_avg, num_rounds_months,\
-        interval_coverage_all_months, best_interval_early_stopping
+    return best_cv_early_stopping, result_final_rms_avg, result_final_avg,\
+        num_rounds_months, interval_coverage_all_months, best_interval_early_stopping
 
 
 def objective(trial: optuna.trial.Trial,
@@ -815,28 +826,53 @@ def objective(trial: optuna.trial.Trial,
             joblib.load('data\general_hyperparams_final.pkl')
     #Set minimial number of columns to one less than the number of columns.
     feature_fraction_min = (len(train_feat) - 1) / len(train_feat)
-    #Set range of values for different hyperparameters
-    params = {'objective': OBJECTIVE,
-              'metric': METRIC,
-              'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1),
-              'max_depth': trial.suggest_int('max_depth', 5, 10),
-              'num_leaves': trial.suggest_int('num_leaves', 16, 128),
-              'lambda_l1': REG_ALPHA,
-              'lambda_l2': trial.suggest_float('lambda_l2', 0.0001, 10.0, log = True),
-              'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-              'subsample': trial.suggest_float('subsample', 0.7, 1.0),
-              'bagging_freq': BAGGING_FREQ,
-              'bagging_seed': FEATURE_FRACTION_SEED,
-              'feature_fraction': trial.suggest_float('feature_fraction',
-                                                      feature_fraction_min,
-                                                      1.0,
-                                                      step = 1 - feature_fraction_min),
-              'feature_fraction_seed': FEATURE_FRACTION_SEED,
-              'max_bin': trial.suggest_int('max_bin', 200, 300),
-              'min_data_in_leaf': trial.suggest_int('min_data_in_leaf', 15, 25),
-              'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
-              'verbose': VERBOSE,
-              'seed': SEED}
+
+    if month in [1, 2, 3]:
+        #Use more conservative hyperparameters for early months
+        params = {'objective': OBJECTIVE,
+                  'metric': METRIC,
+                  'learning_rate': trial.suggest_float('learning_rate', 0.03, 0.15),
+                  'max_depth': trial.suggest_int('max_depth', 4, 9),
+                  'num_leaves': trial.suggest_int('num_leaves', 16, 64),
+                  'lambda_l1': REG_ALPHA,
+                  'lambda_l2': trial.suggest_float('lambda_l2', 0.01, 20.0, log = True),
+                  'min_gain_to_split': MIN_GAIN_TO_SPLIT,
+                  'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+                  'bagging_freq': BAGGING_FREQ,
+                  'bagging_seed': FEATURE_FRACTION_SEED,
+                  'feature_fraction': trial.suggest_float('feature_fraction',
+                                                          feature_fraction_min,
+                                                          1.0,
+                                                          step = 1 - feature_fraction_min),
+                  'feature_fraction_seed': FEATURE_FRACTION_SEED,
+                  'max_bin': trial.suggest_int('max_bin', 100, 300),
+                  'min_data_in_leaf': trial.suggest_int('min_data_in_leaf', 15, 30),
+                  'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
+                  'verbose': VERBOSE,
+                  'seed': SEED}
+    else:
+        #Set range of values for different hyperparameters
+        params = {'objective': OBJECTIVE,
+                  'metric': METRIC,
+                  'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1),
+                  'max_depth': trial.suggest_int('max_depth', 5, 10),
+                  'num_leaves': trial.suggest_int('num_leaves', 16, 128),
+                  'lambda_l1': REG_ALPHA,
+                  'lambda_l2': trial.suggest_float('lambda_l2', 0.0001, 10.0, log = True),
+                  'min_gain_to_split': MIN_GAIN_TO_SPLIT,
+                  'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+                  'bagging_freq': BAGGING_FREQ,
+                  'bagging_seed': FEATURE_FRACTION_SEED,
+                  'feature_fraction': trial.suggest_float('feature_fraction',
+                                                          feature_fraction_min,
+                                                          1.0,
+                                                          step = 1 - feature_fraction_min),
+                  'feature_fraction_seed': FEATURE_FRACTION_SEED,
+                  'max_bin': trial.suggest_int('max_bin', 150, 300),
+                  'min_data_in_leaf': trial.suggest_int('min_data_in_leaf', 15, 25),
+                  'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
+                  'verbose': VERBOSE,
+                  'seed': SEED}
     #Change params to params_dict dictionary
     params_dict = {month: params}
     #Change features to dictionary
@@ -844,7 +880,7 @@ def objective(trial: optuna.trial.Trial,
     #Change month type to list
     month = [month]
     #Perform CV calculation
-    best_cv_per_month, best_cv_avg, num_rounds_months,\
+    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
         interval_coverage_all_months, best_interval_early_stopping =\
             lgbm_cv(train,
                     labels,
@@ -861,9 +897,11 @@ def objective(trial: optuna.trial.Trial,
                     min_max_site_id_dict,
                     path_distr,
                     distr_perc_dict)
+    #Set additional columns to save
+    trial.set_user_attr("best_result_without_rms", best_cv_avg)
     trial.set_user_attr("num_boost_rounds_best", num_rounds_months[0])
     trial.set_user_attr("interval_coverage", best_interval_early_stopping)
-    return best_cv_avg
+    return best_cv_avg_rms
 
 def interval_coverage(actual: np.ndarray,
                       predicted: np.ndarray) -> float:

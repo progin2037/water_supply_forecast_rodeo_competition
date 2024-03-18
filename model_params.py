@@ -8,8 +8,8 @@ VERBOSE = -1
 REG_ALPHA = 0
 MIN_GAIN_TO_SPLIT = 0.0
 MIN_SUM_HESSIAN_IN_LEAF = 0.001
-FEATURE_FRACTION_SEED = 2112
-SEED = 2112
+FEATURE_FRACTION_SEED = 22
+SEED = 22
 #Keep all repetitive hyperparams in one dictionary
 joblib.dump([BAGGING_FREQ,
              OBJECTIVE,
