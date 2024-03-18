@@ -71,7 +71,7 @@ labels = train['volume']
 #CV
 if RUN_CV == True:
     #Maximum number of LightGBM model iterations
-    NUM_BOOST_ROUND = 1000
+    NUM_BOOST_ROUND = 2000
     #Run CV
     best_cv_per_month, best_cv_avg, num_rounds_months,\
         interval_coverage_all_months, best_interval_early_stopping =\
@@ -101,7 +101,7 @@ if RUN_HYPERPARAMS_TUNING == True:
     #Set number of hyperparameters optimization iterations
     N_TRIALS = 80
     #Maximum number of LightGBM model iterations
-    NUM_BOOST_ROUND = 1000
+    NUM_BOOST_ROUND = 2000
     #All months should take 15-40 hours to run. It is recommended to optimize
     #one year at a time
     for issue_month in tqdm(issue_months):
