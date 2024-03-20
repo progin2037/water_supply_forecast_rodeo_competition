@@ -1,6 +1,7 @@
 The changelog was created to keep track of most important changes between different stages of the competition (Hindcast Stage, Forecast Stage, Final Prize Stage).
 
 # Changes between Forecast Stage and Final Prize Stage
+* added CDS data processing
 * added different hyperparms range to optimize for early months (1, 2, 3)
 * added optimizing RMS of results in CV and hyperparams tuning
 * added additional clipping with nat_flow_sum since April

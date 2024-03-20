@@ -2,12 +2,13 @@ import pandas as pd
 import numpy as np
 import pickle
 import joblib
+import os
 
-from utils import ReadAllData, years_cv, get_outliers
+from utils import ReadAllData, years_cv, get_outliers, create_cds_dataframe
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
 preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly,\
-get_prev_daily, nat_flow_sum_cumul_since_apr
+get_prev_daily, nat_flow_sum_cumul_since_apr, get_prev_cds_data
 
 import time
 
@@ -22,14 +23,14 @@ YEAR_SINCE = 1965
 
 
 ###############################################################################
-#READ AND PREPROCESS DATA
+#Read and preprocess data
 ###############################################################################
 #Read all data from utils
 dfs = ReadAllData()
-
+#Get unique site_ids
+site_ids_unique = dfs.site_ids_unique.copy()
 #Get train df from dfs list
 train = dfs.train.copy()
-
 #Remove missing volume
 train = train[train.volume.notna()].reset_index(drop = True)
 
@@ -92,7 +93,7 @@ train['issue_date'] = pd.concat([pd.Series(issue_dates)] * train_len_old).\
 train['issue_date'] = train.year.astype('str') + '-' + train.issue_date
 
 ###############################################################################
-#FEATURE ENGINEERING
+#Feature engineering
 ###############################################################################
 #Append 'longitude' column from metadata
 cols_meta_to_keep = ['site_id', 'longitude']
@@ -250,6 +251,26 @@ train = get_prev_daily(df_aggs = pdsi,
                        issue_days_unique = issue_days_unique,
                        days_lag = 5)
 
+#CDS data
+#Get CDS file name to add to train
+cds_file = 'cds_monthly_swvl'
+#If the script is run for the first time, create a .pkl file for a given CDS
+#data, as the file wasn't yet created from .nc
+if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
+    create_cds_dataframe(f'data/cds/{cds_file}.nc',
+                         dfs.geospatial,
+                         site_ids_unique,
+                         cds_file)
+#Get cds_file latest data before issue_date
+train = get_prev_cds_data(f'data/cds/{cds_file}.pkl',
+                           train,
+                           5,
+                           [''], #doesn't matter for cds_monthly_swvl
+                           ['']) #doesn't matter for cds_monthly_swvl
+
+###############################################################################
+#Final operations on data
+###############################################################################
 #Remove July issue_date for detroit_lake_inflow. This site's volume is
 #calculated for March-June period
 train = train[~((train.site_id == 'detroit_lake_inflow') & (train.month == 7))].\
@@ -264,7 +285,7 @@ issue_date_encoded = dict(zip(issue_dates, range(0, 28)))
 train['issue_date_no_year'] = train.issue_date_no_year.map(issue_date_encoded)
 
 ###############################################################################
-#SAVE OUTPUTS
+#Save outputs
 ###############################################################################
 #Save issue date encoding to be used in test pipeline
 with open("data\issue_date_encoded", "wb") as fp:

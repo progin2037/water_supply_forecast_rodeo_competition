@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+
 from utils import flatten_pandas_agg
 
 def get_aggs_month_day(df_aggs: pd.DataFrame,
@@ -455,3 +456,60 @@ def preprocess_snotel(snotel: pd.DataFrame,
     snotel['issue_date'] = pd.to_datetime(snotel.date) + pd.DateOffset(days = 1)
     snotel['issue_date'] = snotel.issue_date.astype('str')
     return snotel
+
+
+def get_prev_cds_data(path: str,
+                      df_main: pd.DataFrame,
+                      issue_day: int,
+                      cols: list,
+                      new_col_names: list) -> pd.DataFrame:
+    """
+    Append CDS variables from a given .pkl file to the main DataFrame.
+    
+    Args:
+        path (str): A path to given CDS .pkl data
+        df_main (pd.DataFrame): The main DataFrame to be merged with CDS columns
+        issue_day (int): Set earliest day when monthly data is available (to
+            don't look into future)
+        cols (list): list of CDS variables to process
+        new_col_names (list): new names for cols
+    Returns:
+        df_main (pd.DataFrame): The main DataFrame with appended CDS variables
+    """
+    #Read CDS data
+    stats_cds = pd.read_pickle(path)
+    #Get year, month, day
+    stats_cds['year'] = stats_cds.date.dt.year
+    stats_cds['month'] = stats_cds.date.dt.month
+    stats_cds['day'] = stats_cds.date.dt.day
+
+    stats_cds['issue_date_cds'] = pd.to_datetime(
+        dict(year = stats_cds.year, month = stats_cds.month, day = issue_day))
+    stats_cds['issue_date_cds'] = stats_cds.issue_date_cds +\
+        pd.DateOffset(months = 1)
+    stats_cds['issue_date_cds'] = stats_cds.issue_date_cds.astype('str')
+
+    #Get date from the beginning of the month
+    df_main['issue_date_cds'] = pd.to_datetime(df_main.year.astype('str') + '-' +\
+                                               df_main.month.astype('str') + '-' +\
+                                                   str(issue_day))
+    df_main.loc[df_main.day < issue_day, 'issue_date_cds'] =\
+        df_main.issue_date_cds - pd.DateOffset(months = 1)
+    df_main['issue_date_cds'] = df_main.issue_date_cds.astype('str')
+    if path == 'data/cds/cds_monthly_swvl.pkl':
+        #Add an exception for cds_swvl. For this data, get an average of all 
+        #4 swfl columns instead of getting all of them separately
+        stats_cds['swvl_prev_avg'] = stats_cds[stats_cds.columns[
+            stats_cds.columns.str.startswith('swvl')]].mean(axis = 1)
+        stats_cds_prev = stats_cds[['site_id', 'issue_date_cds', 'swvl_prev_avg']]
+    else:
+        #Get columns to merge with df_main
+        stats_cds_prev = stats_cds[['site_id', 'issue_date_cds'] + cols]
+        stats_cds_prev.columns = ['site_id', 'issue_date_cds'] + new_col_names
+    #Merge with df_main
+    df_main = pd.merge(df_main,
+                       stats_cds_prev,
+                       how = 'left',
+                       left_on = ['site_id', 'issue_date_cds'],
+                       right_on = ['site_id', 'issue_date_cds'])
+    return df_main

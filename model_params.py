@@ -215,7 +215,8 @@ train_feat_1 = ['site_id', 'WTEQ_DAILY_prev', 'issue_date_no_year',
                 'pdsi_prev']
 #Feb
 train_feat_2 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
-                'discharge_cfs_mean_since_Oct_std', 'longitude', 'pdsi_prev']
+                'discharge_cfs_mean_since_Oct_std', 'longitude', 'pdsi_prev',
+                'swvl_prev_avg']
 #Mar
 train_feat_3 = ['site_id', 'nat_flow_prev', 'WTEQ_DAILY_prev', 'issue_date_no_year',
                 'discharge_cfs_mean_since_Oct_std', 'longitude']
