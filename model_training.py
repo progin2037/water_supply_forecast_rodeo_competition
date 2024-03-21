@@ -99,14 +99,38 @@ if RUN_CV == True:
 
 #Hyperparameters tuning
 if RUN_HYPERPARAMS_TUNING == True:
-    #Set number of hyperparameters optimization iterations
-    N_TRIALS = 100
+    #Set if that's a final tuning. There are 2 types, initial one, where wide
+    #range of hyperparams is used to determine area where results are optimal
+    #and final one, where based on the results of the initial tuning,
+    #hyperparams space is narrowed
+    FINAL_TUNING = False
+    if FINAL_TUNING == True:
+        path_suff = 'final'
+    else:
+        path_suff = 'initial'
     #Maximum number of LightGBM model iterations
     NUM_BOOST_ROUND = 2000
     #All months should take 15-40 hours to run. It is recommended to optimize
     #one year at a time
     for issue_month in tqdm(issue_months):
         #Choose features from given month
+        if issue_month in [1, 2, 3]:
+            #Use a smaller number of iterations for final tuning
+            if FINAL_TUNING == True:
+                #Use a smaller number of iterations for final tuning. More
+                #iterations than in later months as it is quicker to execute
+                N_TRIALS = 80
+            else:
+                #Use a larger number of iterations to determine best hyperparams space
+                N_TRIALS = 150
+        else:
+            #Use a smaller number of iterations for final tuning
+            if FINAL_TUNING == True:
+                #Use a smaller number of iterations for final tuning
+                N_TRIALS = 60
+            else:
+                #Use a larger number of iterations to determine best hyperparams space
+                N_TRIALS = 100
         train_feat = feat_dict[issue_month]
         sampler = TPESampler(seed = 22) #to get the same results all the time
         #Perform hyperparameters tuning. Ranges of values to select from are
@@ -126,11 +150,12 @@ if RUN_HYPERPARAMS_TUNING == True:
                                                NUM_BOOST_ROUND,
                                                NUM_BOOST_ROUND_START,
                                                EARLY_STOPPING_ROUNDS,
-                                               EARLY_STOPPING_STEP),
+                                               EARLY_STOPPING_STEP,
+                                               FINAL_TUNING),
                        n_trials = N_TRIALS)
         #Save study from given month
         joblib.dump(study,
-                    f"results/hyperparams_tuning/study_final_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
+                    f"results/hyperparams_tuning/study_{path_suff}_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
 
 #Train models for each month and keep them in different lists according to
 #quantiles

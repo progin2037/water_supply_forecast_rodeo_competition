@@ -776,7 +776,8 @@ def objective(trial: optuna.trial.Trial,
               num_boost_round: int,
               num_boost_round_start: int,
               early_stopping_rounds: int,
-              early_stopping_step: int) -> float:
+              early_stopping_step: int,
+              final_tuning: bool) -> float:
     """
     Set logic for optuna hyperparameters tuning, set range of values for
     different hyperparameters, append CV evaluation.
@@ -817,6 +818,9 @@ def objective(trial: optuna.trial.Trial,
         early_stopping_step (int): Number of iterations when early stopping is
             performed. 20 means that it's done every 20 iterations, i,e. after
             100, 120, 140, ... iters
+        final_tuning (bool): Indicates if it's an initial tuning (False) for
+            the given month with a wider range of hyperparameters or final
+            (True) with new range after manual examination of initial results
     Returns:
         best_cv_avg (float): Score for this optimization iteration
     """
@@ -858,7 +862,7 @@ def objective(trial: optuna.trial.Trial,
                   'max_depth': trial.suggest_int('max_depth', 5, 10),
                   'num_leaves': trial.suggest_int('num_leaves', 16, 128),
                   'lambda_l1': REG_ALPHA,
-                  'lambda_l2': trial.suggest_float('lambda_l2', 0.0001, 10.0, log = True),
+                  'lambda_l2': trial.suggest_float('lambda_l2', 0.001, 10.0, log = True),
                   'min_gain_to_split': MIN_GAIN_TO_SPLIT,
                   'subsample': trial.suggest_float('subsample', 0.7, 1.0),
                   'bagging_freq': BAGGING_FREQ,
