@@ -8,7 +8,8 @@ from utils import ReadAllData, years_cv, get_outliers, create_cds_dataframe
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
 preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly,\
-get_prev_daily, nat_flow_sum_cumul_since_apr, get_prev_cds_data
+get_prev_daily, nat_flow_sum_cumul_since_apr, get_prev_cds_data,\
+get_prev_cds_forecasts_data
 
 import time
 
@@ -260,13 +261,49 @@ if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
     create_cds_dataframe(f'data/cds/{cds_file}.nc',
                          dfs.geospatial,
                          site_ids_unique,
-                         cds_file)
-#Get cds_file latest data before issue_date
+                         cds_file,
+                         False)
+#Get cds_monthly_swvl latest data before issue_date
 train = get_prev_cds_data(f'data/cds/{cds_file}.pkl',
                            train,
                            5,
                            [''], #doesn't matter for cds_monthly_swvl
                            ['']) #doesn't matter for cds_monthly_swvl
+
+#CDS Copernicus forecasts
+#Set a dictionary with file data names and months on which predictions were
+#issued
+cds_forecasts_files = {'seasonal_dec': 12,
+                       'seasonal_jan': 1,
+                       'seasonal_feb': 2}
+#Set columns with forecasts to append
+cols_forecasts = ['sd']
+#Set column suffixes, all created columns will have it appended
+suffix = '_forecasts'
+#Iterate over dict elements and assign forecast averages to train
+for cds_file, issue_month in cds_forecasts_files.items():    
+    if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
+        create_cds_dataframe(f'data/cds/{cds_file}.nc',
+                             dfs.geospatial,
+                             site_ids_unique,
+                             cds_file,
+                             True)
+    train = get_prev_cds_forecasts_data(path = f'data/cds/{cds_file}.pkl',
+                                        df_main = train,
+                                        issue_month = issue_month,
+                                        issue_day = 6,
+                                        cols = cols_forecasts,
+                                        remove_end_jun = True,
+                                        suffix = suffix)
+#Create one column with values from different issue months. There shouldn't be
+#any overlap in values, issues from January should be appended to different
+#rows than issues from February
+for col in cols_forecasts:
+    cds_months = cds_forecasts_files.values()
+    train[f'{col}{suffix}'] = np.nan
+    for cds_month in cds_months:
+        train.loc[train[f'{col}{suffix}_{cds_month}'].notna(),
+                  f'{col}{suffix}'] = train[f'{col}{suffix}_{cds_month}']
 
 ###############################################################################
 #Final operations on data

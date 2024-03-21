@@ -8,6 +8,7 @@ from scipy import stats
 import geopandas as gpd
 import xarray as xr
 import pickle
+from pathlib import Path
 from tqdm import tqdm
 from loguru import logger
 
@@ -190,6 +191,79 @@ def get_pdsi_aggs(dir_name: str,
     return pdsi_df
 
 
+def create_cds_dataframe(path: str,
+                         geospatial: gpd.geodataframe.GeoDataFrame,
+                         site_ids_unique: list,
+                         output_name: str,
+                         all_touched: bool):
+    """
+    Read .nc file, create a DataFrame from it and save it.
+    
+    Args:
+        path (str): A path to .nc file
+        geospatial (gpd.geodataframe.GeoDataFrame): site_id data that maps
+            site_ids to polygons that localize them
+        site_ids_unique (list): A list of unique site_ids
+        output_name (str): File name of created .pkl CDS DataFrame
+        all_touched (bool): Specifies if centers of pixels should be within
+            polygon (True) all just any small areas that touch the pixel (False).
+            True is used if CDS data is more detailed (coordinates with step
+            0.1 that come from ERA5-Land) and False is used if step of
+            coordinates is by 1 (Seasonal meteorological forecasts from Copernicus)
+    """
+    #Create data\cds directory if it doesn't exist
+    models_path = Path('data\cds')
+    models_path.mkdir(parents = True, exist_ok = True)
+    stats_cds = []
+    #Read data from a specific year (forecast year)
+    cds_one_month = xr.open_dataset(path)
+    #Change encoding of coordinates
+    cds_one_month.rio.write_crs("epsg:4326", inplace=True)
+    #Get variable names
+    cds_vars = list(cds_one_month.keys())
+    #Iterate over rows from geospatial.gpkg
+    for _, geo in geospatial.iterrows():
+        site_id = geo.site_id
+        print(site_id)
+        #Keep only information from specific site_id
+        if all_touched == True:
+            cds_data = cds_one_month.rio.clip([geo.geometry], all_touched = True)
+        else:
+            cds_data = cds_one_month.rio.clip([geo.geometry])
+        #Get dates to iterate over
+        dates = cds_data.dims['time']
+        #Iterate over different variables
+        for var in cds_vars:
+            for date in range(dates):
+                #Get date
+                date_val = cds_data.time[date].values
+                #Get average value for given var-date combination. This
+                #operation just averages variable's values over different
+                #locations adequate for a given site_id
+                mean_val = np.nanmean(cds_data[var][date])
+                #Append results
+                stats_cds.append([var, site_id, date_val, mean_val])
+    #Store stats_cds data in a DataFrame
+    stats_cds = pd.DataFrame(stats_cds)
+    #Set site_id, date and CDS variables' averages as columns 
+    stats_cds.columns = ['cds_var', 'site_id', 'date', 'mean_value']
+    stats_cds = pd.pivot_table(stats_cds,
+                               values = 'mean_value',
+                               index = ['site_id', 'date'],
+                               columns = 'cds_var').reset_index()
+    #Add date columns
+    stats_cds['year'] = stats_cds.date.dt.year
+    stats_cds['month'] = stats_cds.date.dt.month
+    stats_cds['day'] = stats_cds.date.dt.day
+    stats_cds['hour'] = stats_cds.date.dt.hour
+    #Add year_forecast
+    stats_cds['year_forecast'] = stats_cds.year
+    stats_cds.loc[stats_cds['month'].astype(int).between(10, 12),
+                  'year_forecast'] = stats_cds.year_forecast + 1
+    #Save file, so the processing doesn't have to be done every time
+    stats_cds.to_pickle(f'data/cds/{output_name}.pkl')
+
+
 class ReadAllData:
     """
     A class that loads and stores all data.
@@ -218,8 +292,8 @@ class ReadAllData:
                  2016, 2018, 2020, 2022,
                  #Hindcast test years
                  2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023]
+    #Get streamflow data
     streamflow, not_found_usgs = merge_usgs_streamflow(site_ids_unique, years_all)
-    
     #Get snotel data. Takes ~30 minutes for the first time
     snotel = read_snotel('data\\snotel')
     sites_to_snotel_stations = pd.read_csv('data\\snotel\\sites_to_snotel_stations.csv')

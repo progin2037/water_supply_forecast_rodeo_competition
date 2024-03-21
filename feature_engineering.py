@@ -471,8 +471,8 @@ def get_prev_cds_data(path: str,
         df_main (pd.DataFrame): The main DataFrame to be merged with CDS columns
         issue_day (int): Set earliest day when monthly data is available (to
             don't look into future)
-        cols (list): list of CDS variables to process
-        new_col_names (list): new names for cols
+        cols (list): A list of CDS variables to process
+        new_col_names (list): New names for cols
     Returns:
         df_main (pd.DataFrame): The main DataFrame with appended CDS variables
     """
@@ -488,8 +488,7 @@ def get_prev_cds_data(path: str,
     stats_cds['issue_date_cds'] = stats_cds.issue_date_cds +\
         pd.DateOffset(months = 1)
     stats_cds['issue_date_cds'] = stats_cds.issue_date_cds.astype('str')
-
-    #Get date from the beginning of the month
+    #Get first day when forecasts were available
     df_main['issue_date_cds'] = pd.to_datetime(df_main.year.astype('str') + '-' +\
                                                df_main.month.astype('str') + '-' +\
                                                    str(issue_day))
@@ -509,6 +508,78 @@ def get_prev_cds_data(path: str,
     #Merge with df_main
     df_main = pd.merge(df_main,
                        stats_cds_prev,
+                       how = 'left',
+                       left_on = ['site_id', 'issue_date_cds'],
+                       right_on = ['site_id', 'issue_date_cds'])
+    return df_main
+
+
+def get_prev_cds_forecasts_data(path: str,
+                                df_main: pd.DataFrame,
+                                issue_month: int,
+                                issue_day: int,
+                                cols: list,
+                                remove_end_jun: bool,
+                                suffix: str) -> pd.DataFrame:
+    """
+    Get Coperniucs CDS forecasts, average them over forecasts from given
+    year-site_id combinations and merge with the main DataFrame.
+    
+    Args:
+        path (str): A path to given CDS .pkl data
+        df_main (pd.DataFrame): The main DataFrame to be merged with CDS columns
+        issue_month (int): A month during which the predictions were issued
+        issue_day (int): Set earliest day when monthly data is available to
+            don't look into future. It is 6 for ECMWF data
+            (Update frequency in https://cds.climate.copernicus.eu/cdsapp#!/dataset/seasonal-original-single-levels?tab=overview)
+        cols (list): list of CDS variables to process
+        remove_end_jun (bool): Exclude data starting with end of June. In some
+            cases, such forecasts don't improve model performance, as forecast
+            error is too big or it doesn't bring much information, such as
+            amount of snow in July. Most downloaded files include this period
+        suffix (str): All created columns will have it appended at the end of
+            their names
+    Returns:
+        df_main (pd.DataFrame): The main DataFrame with appended CDS forecasts
+    """
+    #Read CDS forecasts data
+    stats_cds = pd.read_pickle(path)
+    for feat in cols:
+        stats_cds[f'{feat}{suffix}_{issue_month}'] = stats_cds[feat]
+    cols = [x + f'{suffix}_{issue_month}' for x in cols]
+    if remove_end_jun == True:
+        #Don't include end of June/July predictions
+        stats_cds = stats_cds[~(stats_cds.month == 7) &
+                              ~((stats_cds.month == 6) & (stats_cds.day > 20))].\
+            reset_index(drop = True)
+    #Get average value from different month predictions
+    stats_cds = stats_cds.groupby(['site_id', 'year'])[cols].agg('mean').reset_index()
+    #Get year, month, day
+    stats_cds.year = stats_cds.year
+    stats_cds.month = issue_month
+    stats_cds.day = issue_day
+    #Get first day when forecasts were available
+    stats_cds['issue_date_cds'] = pd.to_datetime(dict(
+        year = stats_cds.year, month = stats_cds.month, day = issue_day))
+    #If forecasts were made in Oct/Nov/Dec, assign year when forecasts were
+    #issued to the previous year (forecasts for next year were downloaded for
+    #those months)
+    if issue_month in ([10, 11, 12]):
+        stats_cds['issue_date_cds'] = stats_cds.issue_date_cds - pd.DateOffset(years = 1)    
+    stats_cds['issue_date_cds'] = stats_cds.issue_date_cds.astype('str')
+    #Assign issue dates for df_main to be compatible with the closest available
+    #ones from CDS forecasts
+    df_main['issue_date_cds'] = pd.to_datetime(df_main.year.astype('str') + '-' +\
+                                             df_main.month.astype('str') + '-' +\
+                                                 str(issue_day))
+    df_main.loc[df_main.day < issue_day, 'issue_date_cds'] =\
+        df_main.issue_date_cds - pd.DateOffset(months = 1)
+    df_main['issue_date_cds'] = df_main.issue_date_cds.astype('str')
+    #Get columns to merge with df_main
+    stats_cds = stats_cds[['site_id', 'issue_date_cds'] + cols]
+    #Merge with df_main
+    df_main = pd.merge(df_main,
+                       stats_cds,
                        how = 'left',
                        left_on = ['site_id', 'issue_date_cds'],
                        right_on = ['site_id', 'issue_date_cds'])
