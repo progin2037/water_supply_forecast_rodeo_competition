@@ -831,7 +831,7 @@ def objective(trial: optuna.trial.Trial,
     #Set minimial number of columns to one less than the number of columns.
     feature_fraction_min = (len(train_feat) - 1) / len(train_feat)
 
-    if month in [1, 2, 3]:
+    if month in [1, 2]:
         #Use more conservative hyperparameters for early months
         params = {'objective': OBJECTIVE,
                   'metric': METRIC,
@@ -859,7 +859,7 @@ def objective(trial: optuna.trial.Trial,
         params = {'objective': OBJECTIVE,
                   'metric': METRIC,
                   'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1),
-                  'max_depth': trial.suggest_int('max_depth', 5, 10),
+                  'max_depth': trial.suggest_int('max_depth', 4, 10),
                   'num_leaves': trial.suggest_int('num_leaves', 16, 128),
                   'lambda_l1': REG_ALPHA,
                   'lambda_l2': trial.suggest_float('lambda_l2', 0.001, 10.0, log = True),

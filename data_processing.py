@@ -251,6 +251,20 @@ train = get_prev_daily(df_aggs = pdsi,
                        site_id_col = 'site_id',
                        issue_days_unique = issue_days_unique,
                        days_lag = 5)
+#Append pdsi_prev_30_days (30 days before prev)
+pdsi = dfs.pdsi.copy()
+train = get_prev_daily(df_aggs = pdsi,
+                       df_main = train,
+                       cols = ['pdsi_mean'],
+                       new_col_names = ['pdsi_prev_30_days'],
+                       date_col = 'pdsi_date',
+                       site_id_col = 'site_id',
+                       issue_days_unique = issue_days_unique,
+                       days_lag = 5+30)
+
+#Create pdsi_prev_to_last_month_diff to get a difference between pdsi_prev
+#and pdsi_prev_30_days
+train['pdsi_prev_to_last_month_diff'] = train.pdsi_prev - train.pdsi_prev_30_days
 
 #CDS data
 #Get CDS file name to add to train
@@ -275,7 +289,10 @@ train = get_prev_cds_data(f'data/cds/{cds_file}.pkl',
 #issued
 cds_forecasts_files = {'seasonal_dec': 12,
                        'seasonal_jan': 1,
-                       'seasonal_feb': 2}
+                       'seasonal_feb': 2,
+                       'seasonal_mar': 3,
+                       'seasonal_apr': 4,
+                       'seasonal_may': 5}
 #Set columns with forecasts to append
 cols_forecasts = ['sd']
 #Set column suffixes, all created columns will have it appended
@@ -294,6 +311,40 @@ for cds_file, issue_month in cds_forecasts_files.items():
                                         issue_day = 6,
                                         cols = cols_forecasts,
                                         remove_end_jun = True,
+                                        suffix = suffix)
+#Create one column with values from different issue months. There shouldn't be
+#any overlap in values, issues from January should be appended to different
+#rows than issues from February
+for col in cols_forecasts:
+    cds_months = cds_forecasts_files.values()
+    train[f'{col}{suffix}'] = np.nan
+    for cds_month in cds_months:
+        train.loc[train[f'{col}{suffix}_{cds_month}'].notna(),
+                  f'{col}{suffix}'] = train[f'{col}{suffix}_{cds_month}']
+
+
+#Get the same but with end of June/July data. For some months, June forecasts
+#boost the predictive power of the model. It's needed to be run again, as for
+#1st day of the issue date, previous issue month forecasts are used
+
+#Set columns with forecasts to append
+cols_forecasts = ['sd']
+#Set column suffixes, all created columns will have it appended
+suffix = '_forecasts_with_jun'
+#Iterate over dict elements and assign forecast averages to train
+for cds_file, issue_month in cds_forecasts_files.items():    
+    if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
+        create_cds_dataframe(f'data/cds/{cds_file}.nc',
+                             dfs.geospatial,
+                             site_ids_unique,
+                             cds_file,
+                             True)
+    train = get_prev_cds_forecasts_data(path = f'data/cds/{cds_file}.pkl',
+                                        df_main = train,
+                                        issue_month = issue_month,
+                                        issue_day = 6,
+                                        cols = cols_forecasts,
+                                        remove_end_jun = False,
                                         suffix = suffix)
 #Create one column with values from different issue months. There shouldn't be
 #any overlap in values, issues from January should be appended to different
