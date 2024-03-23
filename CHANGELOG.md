@@ -1,6 +1,8 @@
 The changelog was created to keep track of most important changes between different stages of the competition (Hindcast Stage, Forecast Stage, Final Prize Stage).
 
 # Changes between Forecast Stage and Final Prize Stage
+* added better DISTR_PERC for February and March predictions
+* added final_preds pipeline (predictions from LOOCV)
 * added pdsi_prev_to_last_month_diff
 * addded CDS Copernicus forecasts processing, both with and without late Jun/Jul forecasts
 * added CDS data processing

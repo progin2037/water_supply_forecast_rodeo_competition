@@ -15,7 +15,7 @@ start = time.time()
 #Set types of training to run
 RUN_CV = True
 RUN_HYPERPARAMS_TUNING = False
-RUN_TRAINING = True
+RUN_TRAINING = False
 
 #Read data
 train = pd.read_pickle('data/train_test_final.pkl')
@@ -40,8 +40,8 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
     #Set importance for distribution in quantiles 0.1 and 0.9 calculation for
     #different months
     distr_perc_dict = {1: 0.6,
-                       2: 0.45,
-                       3: 0.4,
+                       2: 0.5,
+                       3: 0.45,
                        4: 0.3,
                        5: 0.25,
                        6: 0.2,
