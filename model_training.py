@@ -1,5 +1,6 @@
 import pandas as pd
 import joblib
+import pickle
 import optuna
 from optuna.samplers import TPESampler
 from tqdm import tqdm
@@ -74,7 +75,7 @@ if RUN_CV == True:
     NUM_BOOST_ROUND = 2000
     #Run CV
     best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
-        interval_coverage_all_months, best_interval_early_stopping =\
+        interval_coverage_all_months, best_interval_early_stopping, preds =\
             lgbm_cv(train,
                     labels,
                     NUM_BOOST_ROUND,
@@ -91,11 +92,38 @@ if RUN_CV == True:
                     PATH_DISTR,
                     distr_perc_dict)
     print('CV result avg over months:', best_cv_avg)
-    print('CV RMS results per month with number of iters:', best_cv_per_month)
     print('CV results per month with number of iters:', best_cv_per_month)
     print('Number of iters per month:', num_rounds_months)
     print('Interval coverage per month:', interval_coverage_all_months)
     print('Average interval coverage:', best_interval_early_stopping)
+
+    ###########################################################################
+    #Submission pipeline
+    ###########################################################################
+    #Get cross-validation LB format for predictions
+    submission = pd.read_csv('data\cross_validation_submission_format.csv')
+    #Get issue date encoding
+    with open("data\issue_date_encoded", "rb") as fp:
+        issue_date_encoded = pickle.load(fp)
+    #Get month_day and year
+    submission['month_day'] = submission.issue_date.str[5:]
+    submission['year'] = submission.issue_date.str[:4]
+    submission['year'] = submission.year.astype('int')
+    #Encode issue dates to get issue_date_no_year from training
+    submission['issue_date_no_year'] = submission.month_day.map(issue_date_encoded)
+    #Drop volume columns that will be replaced with predictions
+    submission.drop(['volume_10', 'volume_50', 'volume_90'],
+                    axis = 1, inplace = True)
+    #Merge submission format with predictions
+    submission = pd.merge(
+        submission[['site_id', 'issue_date', 'issue_date_no_year', 'year']],
+        preds[['site_id', 'issue_date_no_year', 'volume_10', 'volume_50', 'volume_90', 'year']],
+        how = 'left',
+        on = ['site_id', 'issue_date_no_year', 'year'])
+    #Keep only columns for submission
+    submission.drop(['issue_date_no_year', 'year'], axis = 1, inplace = True)
+    #Save submission
+    submission.to_csv('submission.csv', index = False)
 
 #Hyperparameters tuning
 if RUN_HYPERPARAMS_TUNING == True:
@@ -114,7 +142,7 @@ if RUN_HYPERPARAMS_TUNING == True:
     #one year at a time
     for issue_month in tqdm(issue_months):
         #Choose features from given month
-        if issue_month in [1, 2, 3]:
+        if issue_month in [1, 2]:
             #Use a smaller number of iterations for final tuning
             if FINAL_TUNING == True:
                 #Use a smaller number of iterations for final tuning. More
@@ -123,8 +151,20 @@ if RUN_HYPERPARAMS_TUNING == True:
             else:
                 #Use a larger number of iterations to determine best hyperparams space
                 N_TRIALS = 150
-        else:
+        elif issue_month in [3, 4]:
             #Use a smaller number of iterations for final tuning
+            if FINAL_TUNING == True:
+                #Use 20 iters less for initial and 10 less for final, as it
+                #takes more time to run
+                N_TRIALS = 70
+            else:
+                #Use a larger number of iterations to determine best hyperparams space
+                N_TRIALS = 130
+        else:
+            #Use a smaller number of iterations for final tuning. 5, 6 and 7
+            #months have strong prediction power, so it isn't that important
+            #to train them for long. They take also more time for 1 iteration
+            #to run
             if FINAL_TUNING == True:
                 #Use a smaller number of iterations for final tuning
                 N_TRIALS = 60

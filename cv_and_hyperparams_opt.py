@@ -8,6 +8,9 @@ from tqdm import tqdm
 
 from utils import get_quantiles_from_distr, all_distr_dict
 
+#Don't show unnecessary warnings in training
+pd.options.mode.chained_assignment = None
+
 def get_cv_folds(train: pd.DataFrame,
                  month: int,
                  years_cv: list,
@@ -349,7 +352,8 @@ def lgbm_cv(train: pd.DataFrame,
             categorical: list,
             min_max_site_id_dict: dict,
             path_distr: str,
-            distr_perc_dict: dict) -> tuple[np.array, float, list, np.array]:
+            distr_perc_dict: dict) -> tuple[np.array, float, list, np.array,
+                                            pd.DataFrame]:
     """
     Run LightGBM CV with early stopping, get distribution estimates and
     average the results. Perform additional clipping to model predictions.
@@ -396,11 +400,16 @@ def lgbm_cv(train: pd.DataFrame,
         num_rounds_months (list): Number of model iterations for each month
         best_interval_early_stopping (np.array): interval coverage results from
             different month for num_rounds_months iterations
+        final_preds_all_months (pd.DataFrame): Predictions with best number
+            of iterations from selected issue months
     """
     ###########################################################################
     #Global parameters and variables initialization
     ###########################################################################
     #Initialize empty variables
+    #Initialize predictions for different folds
+    final_preds_all_months = pd.DataFrame()
+
     results_10_clipped = []
     results_50_clipped = []
     results_90_clipped = []
@@ -415,6 +424,8 @@ def lgbm_cv(train: pd.DataFrame,
     ###########################################################################    
     for month_idx, month in tqdm(enumerate(issue_months)):
         print(f'\nMonth: {month}')
+        #Initialize predictions for given month
+        final_preds = pd.DataFrame()
         #Get distribution percentage to use for given month
         distr_perc = distr_perc_dict[month]
         #Initialize variables for the month
@@ -671,6 +682,19 @@ def lgbm_cv(train: pd.DataFrame,
                     interval_coverage(np.array(labels[test_cv_idxs[fold]]),
                                       np.array(results_clipped[different_volumes]))
                 results_coverage.append(result_coverage)
+
+                #Get predictions
+                preds_with_volumes = results_clipped[['site_id',
+                                                      'volume_10',
+                                                      'volume_50',
+                                                      'volume_90',
+                                                      'issue_date_no_year']]
+                #Append NUM_BOOST_ROUND_MONTH
+                preds_with_volumes['num_boost_rounds'] = num_boost_round_month
+                #Append year
+                preds_with_volumes['year'] = year
+                #Append predictions
+                final_preds = pd.concat([final_preds, preds_with_volumes])
             #Average results over different folds for given model iteration
             cv_result_avg_fold = np.mean(cv_results)
             #Average RMS (root mean square) results over different folds for
@@ -716,8 +740,14 @@ def lgbm_cv(train: pd.DataFrame,
             cv_results_avg_fold = cv_results_avg_fold[:-num_prev_iters_better]
             results_coverage_avg_fold =\
                 results_coverage_avg_fold[:-num_prev_iters_better]
+            #Keep only predictions from best num_boost_rounds
+            final_preds = final_preds[
+                final_preds.num_boost_rounds == num_boost_round_month -\
+                    (1 + num_prev_iters_better) * early_stopping_step]
         cv_results_all_months[month] = cv_results_avg_fold
         results_coverage_all_months[month] = results_coverage_avg_fold
+        #Append predictions from given month
+        final_preds_all_months = pd.concat([final_preds_all_months, final_preds]) 
     ###########################################################################
     #All months were trained. Get final results to return
     ###########################################################################
@@ -759,7 +789,8 @@ def lgbm_cv(train: pd.DataFrame,
     best_interval_early_stopping =\
         np.sum(best_interval_early_stopping[:, 0] * month_weights)
     return best_cv_early_stopping, result_final_rms_avg, result_final_avg,\
-        num_rounds_months, interval_coverage_all_months, best_interval_early_stopping
+        num_rounds_months, interval_coverage_all_months, best_interval_early_stopping,\
+        final_preds_all_months
 
 
 def objective(trial: optuna.trial.Trial,
@@ -831,7 +862,7 @@ def objective(trial: optuna.trial.Trial,
     #Set minimial number of columns to one less than the number of columns.
     feature_fraction_min = (len(train_feat) - 1) / len(train_feat)
 
-    if month in [1, 2]:
+    if month in [1, 2, 3]:
         #Use more conservative hyperparameters for early months
         params = {'objective': OBJECTIVE,
                   'metric': METRIC,
@@ -885,7 +916,8 @@ def objective(trial: optuna.trial.Trial,
     month = [month]
     #Perform CV calculation
     best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
-        interval_coverage_all_months, best_interval_early_stopping =\
+        interval_coverage_all_months, best_interval_early_stopping,\
+            final_preds =\
             lgbm_cv(train,
                     labels,
                     num_boost_round,
