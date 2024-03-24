@@ -269,10 +269,18 @@ class ReadAllData:
     A class that loads and stores all data.
     """
     #Main data
-    train = pd.read_csv('data/forecast_train.csv')
+    train_hist = pd.read_csv('data/prior_historical_labels.csv')
+    train_cv = pd.read_csv('data/cross_validation_labels.csv')
+    train = pd.concat([train_hist, train_cv]).reset_index(drop = True)
+
     meta = pd.read_csv('data/metadata.csv', dtype={"usgs_id": "string"})
     submission_format = pd.read_csv('data/submission_format.csv')
-    train_monthly_naturalized_flow = pd.read_csv('data/forecast_train_monthly_naturalized_flow.csv')
+    
+    prior_historical_monthly_flow = pd.read_csv('data/prior_historical_monthly_flow.csv')
+    cross_validation_monthly_flow = pd.read_csv('data/cross_validation_monthly_flow.csv')
+    train_monthly_naturalized_flow = pd.concat([prior_historical_monthly_flow,
+                                                cross_validation_monthly_flow])
+
     geospatial = gpd.read_file('data/geospatial.gpkg')
 
     site_ids_unique = list(train['site_id'].unique())
