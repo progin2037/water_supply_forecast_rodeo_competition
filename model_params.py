@@ -22,44 +22,6 @@ joblib.dump([BAGGING_FREQ,
              SEED],
             'data\general_hyperparams_final.pkl')
 
-#Read hyperparameters tuning results. Commented as this step is not necessary,
-#values from hyperparamaters tuning are already hardcoded below
-'''
-#Read params from files
-print('Jan')
-study = joblib.load('results/hyperparams_tuning/study_2024_01_11_16_20_18_month_1.pkl')
-display(study.best_params)
-
-print('Feb')
-study = joblib.load('results/hyperparams_tuning/study_2024_01_11_19_23_41_month_2.pkl')
-display(study.best_params)
-
-print('Mar')
-#Month 3 was the first to optimize and it was done with 100 iterations instead of 80
-study = joblib.load('results/hyperparams_tuning/study_2024_01_08_17_21_37_month_3.pkl')
-display(study.best_params)
-
-print('Apr')
-study = joblib.load('results/hyperparams_tuning/study_2024_01_10_12_46_25_month_4.pkl')
-display(study.best_params)
-
-print('May')
-study = joblib.load('results/hyperparams_tuning/study_2024_01_11_17_13_45_month_5.pkl')
-display(study.best_params)
-
-print('June')
-study = joblib.load('results/hyperparams_tuning/study_2024_01_11_00_10_08_month_6.pkl')
-display(study.best_params)
-
-print('July')
-#There are only first 5 saved iterations for July due to some crashes in the
-#processing. The optimization was performed again and after ~60 iterations the
-#5th one was still the best, so it was kept as the final one for the Forecast
-#Stage due to the approaching deadline
-study = joblib.load('results/hyperparams_tuning/study_2024_01_10_13_23_44_month_7.pkl')
-display(study.best_params)
-'''
-
 #Set different params for each month. These are best params from hyperparameters
 #optimization
 
@@ -82,7 +44,6 @@ params_1 = {'objective': OBJECTIVE,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
-
 #Feb
 params_2 = {'objective': OBJECTIVE,
             'metric': METRIC,
@@ -102,7 +63,6 @@ params_2 = {'objective': OBJECTIVE,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
-
 #Mar
 params_3 = {'objective': OBJECTIVE,
             'metric': METRIC,
@@ -122,7 +82,6 @@ params_3 = {'objective': OBJECTIVE,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
-
 #Apr
 params_4 = {'objective': OBJECTIVE,
             'metric': METRIC,
@@ -146,57 +105,57 @@ params_4 = {'objective': OBJECTIVE,
 #May
 params_5 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.036413549774305234,
-            'max_depth': 9,
-            'num_leaves': 59,
+            'learning_rate': 0.02876144836229584,
+            'max_depth': 7,
+            'num_leaves': 63,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.00010009943502276089,
+            'lambda_l2': 2.733556118022411,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.7708049704957225,
+            'subsample': 0.7513484660835019,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 0.875,
+            'feature_fraction': 0.9,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 226,
-            'min_data_in_leaf': 25,
+            'max_bin': 190,
+            'min_data_in_leaf': 22,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
 #Jun
 params_6 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.03710481544436431,
-            'max_depth': 10,
-            'num_leaves': 109,
+            'learning_rate': 0.03281676866609218,
+            'max_depth': 7,
+            'num_leaves': 59,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 2.377774250624091,
+            'lambda_l2': 0.9395397222125083,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.7631179547240611,
+            'subsample': 0.753041555955779,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 1.0,
+            'feature_fraction': 0.8888888888888888,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 295,
-            'min_data_in_leaf': 24,
+            'max_bin': 187,
+            'min_data_in_leaf': 22,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
 #Jul
 params_7 = {'objective': OBJECTIVE,
             'metric': METRIC,
-            'learning_rate': 0.025193770366946387,
-            'max_depth': 8,
-            'num_leaves': 102,
+            'learning_rate': 0.03322427099826354,
+            'max_depth': 10,
+            'num_leaves': 77,
             'lambda_l1': REG_ALPHA,
-            'lambda_l2': 0.0005725785588927758,
+            'lambda_l2': 0.3328591152833702,
             'min_gain_to_split': MIN_GAIN_TO_SPLIT,
-            'subsample': 0.9101358458638595,
+            'subsample': 0.8720589281122795,
             'bagging_freq': BAGGING_FREQ,
             'bagging_seed': FEATURE_FRACTION_SEED,
-            'feature_fraction': 0.8888888888888888,
+            'feature_fraction': 1.0,
             'feature_fraction_seed': FEATURE_FRACTION_SEED,
-            'max_bin': 290,
-            'min_data_in_leaf': 15,
+            'max_bin': 165,
+            'min_data_in_leaf': 17,
             'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
             'verbose': VERBOSE,
             'seed': SEED}
@@ -246,36 +205,36 @@ train_feat_4 = ['site_id',
                 'pdsi_prev',
                 'sd_forecasts_with_jun']
 #May
-train_feat_5 = ['site_id', 'nat_flow_prev',
+train_feat_5 = ['site_id',
                 'WTEQ_DAILY_prev',
                 'issue_date_no_year',
                 'discharge_cfs_mean_since_Oct_std',
                 'longitude',
                 'WTEQ_DAILY_Apr_mean',
-                'discharge_cfs_mean_Apr_mean',
-                'pdsi_prev']
+                'pdsi_prev',
+                'PREC_DAILY_Apr_mean',
+                'PREC_DAILY_Apr_prev_diff',
+                'sd_prev']
 #Jun
 train_feat_6 = ['site_id',
-                'nat_flow_prev',
                 'WTEQ_DAILY_prev',
+                'WTEQ_DAILY_Jun_prev_diff',
                 'issue_date_no_year',
                 'discharge_cfs_mean_since_Oct_std',
                 'longitude',
-                'WTEQ_DAILY_Apr_mean',
-                'discharge_cfs_mean_Apr_mean',
-                'nat_flow_Apr_mean',
-                'pdsi_prev']
+                'pdsi_prev',
+                'PREC_DAILY_Apr_prev_diff',
+                'sd_prev']
 #Jul
 train_feat_7 = ['site_id',
                 'nat_flow_prev',
-                'WTEQ_DAILY_prev',
                 'issue_date_no_year',
-                'discharge_cfs_mean_std',
                 'longitude',
                 'nat_flow_Apr_mean',
                 'WTEQ_DAILY_Apr_mean',
-                'discharge_cfs_mean_Apr_mean',
-                'pdsi_prev']
+                'pdsi_prev',
+                'sd_prev',
+                'WTEQ_DAILY_Jul_prev_diff']
 
 #Keep all features in one dictionary
 train_feat_dict = {1: train_feat_1,
@@ -287,3 +246,103 @@ train_feat_dict = {1: train_feat_1,
                    7: train_feat_7}
 #Save features to .pkl
 joblib.dump(train_feat_dict, 'data\lgbm_model_feats_final.pkl')
+
+#Set different features for site_ids without naturalized flow features
+train_feat_no_nat_flow_5 = ['site_id',
+                            'issue_date_no_year',
+                            'discharge_cfs_mean_since_Oct_std',
+                            'longitude',
+                            'WTEQ_DAILY_Apr_mean',
+                            'pdsi_prev',
+                            'PREC_DAILY_Apr_mean',
+                            'sd_prev']
+
+train_feat_no_nat_flow_6 = ['site_id',
+                            'WTEQ_DAILY_prev',
+                            'WTEQ_DAILY_Apr_mean',
+                            'WTEQ_DAILY_Jun_prev_diff',
+                            'issue_date_no_year',
+                            'discharge_cfs_mean_since_Oct_std',
+                            'longitude',
+                            'pdsi_prev',
+                            'sd_prev']
+
+train_feat_no_nat_flow_7 = ['site_id',
+                            'issue_date_no_year',
+                            'longitude',
+                            'WTEQ_DAILY_Apr_mean',
+                            'discharge_cfs_mean_Apr_mean',
+                            'pdsi_prev',
+                            'pdsi_prev_to_last_month_diff']
+#Keep all features in one dictionary
+train_feat_no_nat_flow_dict = {5: train_feat_no_nat_flow_5,
+                               6: train_feat_no_nat_flow_6,
+                               7: train_feat_no_nat_flow_7}
+#Save features to .pkl
+joblib.dump(train_feat_no_nat_flow_dict,
+            'data\lgbm_model_feats_no_nat_flow_final.pkl')
+
+#May
+params_5_no_nat_flow = {'objective': OBJECTIVE,
+                        'metric': METRIC,
+                        'learning_rate': 0.07055428692224101,
+                        'max_depth': 7,
+                        'num_leaves': 85,
+                        'lambda_l1': REG_ALPHA,
+                        'lambda_l2': 4.995708705325918,
+                        'min_gain_to_split': MIN_GAIN_TO_SPLIT,
+                        'subsample': 0.7230053533134918,
+                        'bagging_freq': BAGGING_FREQ,
+                        'bagging_seed': FEATURE_FRACTION_SEED,
+                        'feature_fraction': 1.0,
+                        'feature_fraction_seed': FEATURE_FRACTION_SEED,
+                        'max_bin': 137,
+                        'min_data_in_leaf': 28,
+                        'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
+                        'verbose': VERBOSE,
+                        'seed': SEED}
+#Jun
+params_6_no_nat_flow = {'objective': OBJECTIVE,
+                        'metric': METRIC,
+                        'learning_rate': 0.057517057231425125,
+                        'max_depth': 6,
+                        'num_leaves': 128,
+                        'lambda_l1': REG_ALPHA,
+                        'lambda_l2': 3.593916596909529,
+                        'min_gain_to_split': MIN_GAIN_TO_SPLIT,
+                        'subsample': 0.7486863261543473,
+                        'bagging_freq': BAGGING_FREQ,
+                        'bagging_seed': FEATURE_FRACTION_SEED,
+                        'feature_fraction': 1.0,
+                        'feature_fraction_seed': FEATURE_FRACTION_SEED,
+                        'max_bin': 135,
+                        'min_data_in_leaf': 17,
+                        'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
+                        'verbose': VERBOSE,
+                        'seed': SEED}
+#Jul
+params_7_no_nat_flow = {'objective': OBJECTIVE,
+                        'metric': METRIC,
+                        'learning_rate': 0.04736884542644427,
+                        'max_depth': 8,
+                        'num_leaves': 115,
+                        'lambda_l1': REG_ALPHA,
+                        'lambda_l2': 2.3433145604798717,
+                        'min_gain_to_split': MIN_GAIN_TO_SPLIT,
+                        'subsample': 0.840652186517837,
+                        'bagging_freq': BAGGING_FREQ,
+                        'bagging_seed': FEATURE_FRACTION_SEED,
+                        'feature_fraction': 1.0,
+                        'feature_fraction_seed': FEATURE_FRACTION_SEED,
+                        'max_bin': 160,
+                        'min_data_in_leaf': 28,
+                        'min_sum_hessian_in_leaf': MIN_SUM_HESSIAN_IN_LEAF,
+                        'verbose': VERBOSE,
+                        'seed': SEED}
+
+#Keep all params in one dictionary
+params_dict_no_nat_flow = {5: params_5_no_nat_flow,
+                           6: params_6_no_nat_flow,
+                           7: params_7_no_nat_flow}
+#Save params to .pkl
+joblib.dump(params_dict_no_nat_flow, 'data\lgbm_model_params_no_nat_flow.pkl')
