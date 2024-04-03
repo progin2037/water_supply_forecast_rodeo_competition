@@ -6,7 +6,8 @@ from optuna.samplers import TPESampler
 from tqdm import tqdm
 
 from train_utils import to_categorical, train_pipeline, save_models
-from cv_and_hyperparams_opt import get_years_cv, lgbm_cv, objective
+from cv_and_hyperparams_opt import get_years_cv, lgbm_cv, lgbm_cv_residuals,\
+    objective
 
 import time
 
@@ -17,10 +18,40 @@ RUN_CV = True
 RUN_HYPERPARAMS_TUNING = False
 RUN_TRAINING = False
 
+#Set training parameters. Jan-Apr should use False values for RESIDUALS and
+#NO_NAT_FLOW_SITES.
+#May-Jul for 23 site ids with naturalized flow history should use True value
+#for RESIDUALS and False for NO_NAT_FLOW_SITES.
+#May-Jul for 3 site ids without naturalized flow history should use True value
+#for NO_NAT_FLOW_SITES and False value for RESIDUALS
+
+#Set if that's a final tuning. There are 2 types, initial one, where wide
+#range of hyperparams is used to determine area where results are optimal
+#and final one (used only for July in the final solution), where based on
+#the results from the initial tuning, hyperparams space is narrowed
+FINAL_TUNING = False
+#Set if volume residuals should be used in training
+RESIDUALS = False
+#Set if training is for 3 site_ids without naturalized flow features
+NO_NAT_FLOW_SITES = False
+
 #Read data
 train = pd.read_pickle('data/train_test_final.pkl')
 params_dict = joblib.load('data\lgbm_model_params_final.pkl')
 feat_dict = joblib.load('data\lgbm_model_feats_final.pkl')
+
+if NO_NAT_FLOW_SITES == True:
+    #Get features
+    feat_dict_no_nat_flow =\
+        joblib.load('data\lgbm_model_feats_no_nat_flow_final.pkl')
+    #Get params
+    params_dict_no_nat_flow =\
+        joblib.load('data\lgbm_model_params_no_nat_flow.pkl')
+    #Set small number of hyperparams optmization iterations. It's only
+    #for 3 site_ids, so it doesn't have to be bigger
+    distr_perc_dict_no_nat_flow = {5: 0.25,
+                                   6: 0.15,
+                                   7: 0.1}
 
 #Different models are created for different months
 issue_months = [1, 2, 3, 4, 5, 6, 7]
@@ -69,28 +100,95 @@ train = to_categorical(['site_id'],
 #Get labels
 labels = train['volume']
 
+#Select data concerning volume residuals
+if RESIDUALS == True:
+    train.loc[(train.month == 7) & ~(train.site_id.isin(['american_river_folsom_lake',
+                                                        'san_joaquin_river_millerton_reservoir',
+                                                        'merced_river_yosemite_at_pohono_bridge'])),
+              'volume_residuals'] = train.volume - train.nat_flow_sum_Apr_Jun
+    train.loc[(train.month == 6) & ~(train.site_id.isin(['american_river_folsom_lake',
+                                                        'san_joaquin_river_millerton_reservoir',
+                                                        'merced_river_yosemite_at_pohono_bridge'])),
+              'volume_residuals'] = train.volume - train.nat_flow_sum_Apr_May
+    train.loc[(train.month == 5) & ~(train.site_id.isin(['american_river_folsom_lake',
+                                                        'san_joaquin_river_millerton_reservoir',
+                                                        'merced_river_yosemite_at_pohono_bridge'])),
+              'volume_residuals'] = train.volume - train.nat_flow_sum_Apr_Apr
+    #Set site ids without naturalized flow history
+    site_ids_no_nat_flow = ['american_river_folsom_lake',
+                            'san_joaquin_river_millerton_reservoir',
+                            'merced_river_yosemite_at_pohono_bridge']
+    #Remove site_ids without naturalized flow history
+    train_23 = train[~train.site_id.isin(site_ids_no_nat_flow)].reset_index(drop = True)
+    #Get full volume
+    labels_23 = train_23['volume']
+    #Get volume residuals
+    labels_residuals = train_23['volume_residuals']
+
 #CV
 if RUN_CV == True:
     #Maximum number of LightGBM model iterations
     NUM_BOOST_ROUND = 2000
-    #Run CV
-    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
-        interval_coverage_all_months, best_interval_early_stopping, preds =\
-            lgbm_cv(train,
-                    labels,
-                    NUM_BOOST_ROUND,
-                    NUM_BOOST_ROUND_START,
-                    EARLY_STOPPING_ROUNDS,
-                    EARLY_STOPPING_STEP,
-                    issue_months,
-                    years_cv,
-                    YEAR_RANGE,
-                    feat_dict,
-                    params_dict,
-                    categorical,
-                    min_max_site_id,
-                    PATH_DISTR,
-                    distr_perc_dict)
+    if NO_NAT_FLOW_SITES == False:
+        if RESIDUALS == True:
+            #Volume residuals CV
+            best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+                interval_coverage_all_months, best_interval_early_stopping, preds =\
+                    lgbm_cv_residuals(train_23,
+                                      labels_residuals,
+                                      labels_23,
+                                      NUM_BOOST_ROUND,
+                                      NUM_BOOST_ROUND_START,
+                                      EARLY_STOPPING_ROUNDS,
+                                      EARLY_STOPPING_STEP,
+                                      issue_months,
+                                      years_cv,
+                                      YEAR_RANGE,
+                                      feat_dict,
+                                      params_dict,
+                                      categorical,
+                                      min_max_site_id,
+                                      PATH_DISTR,
+                                      distr_perc_dict)
+        else:
+            #Basic CV
+            best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+                interval_coverage_all_months, best_interval_early_stopping, preds =\
+                    lgbm_cv(train,
+                            labels,
+                            NUM_BOOST_ROUND,
+                            NUM_BOOST_ROUND_START,
+                            EARLY_STOPPING_ROUNDS,
+                            EARLY_STOPPING_STEP,
+                            issue_months,
+                            years_cv,
+                            YEAR_RANGE,
+                            feat_dict,
+                            params_dict,
+                            categorical,
+                            min_max_site_id,
+                            PATH_DISTR,
+                            distr_perc_dict)
+    else:
+        #NO_NAT_FLOW_SITES CV
+        best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+            interval_coverage_all_months, best_interval_early_stopping, preds =\
+                lgbm_cv(train,
+                        labels,
+                        NUM_BOOST_ROUND,
+                        NUM_BOOST_ROUND_START,
+                        EARLY_STOPPING_ROUNDS,
+                        EARLY_STOPPING_STEP,
+                        issue_months,
+                        years_cv,
+                        YEAR_RANGE,
+                        feat_dict_no_nat_flow,
+                        params_dict_no_nat_flow,
+                        categorical,
+                        min_max_site_id,
+                        PATH_DISTR,
+                        distr_perc_dict_no_nat_flow,
+                        NO_NAT_FLOW_SITES)
     print('CV result avg over months:', best_cv_avg)
     print('CV results per month with number of iters:', best_cv_per_month)
     print('Number of iters per month:', num_rounds_months)
@@ -122,80 +220,129 @@ if RUN_CV == True:
         on = ['site_id', 'issue_date_no_year', 'year'])
     #Keep only columns for submission
     submission.drop(['issue_date_no_year', 'year'], axis = 1, inplace = True)
-    #Save submission
-    submission.to_csv('submission.csv', index = False)
-
+    #Save submission based on type of training
+    if RESIDUALS == False and NO_NAT_FLOW_SITES == False:
+        submission.to_csv('submission_volume_26_site_ids.csv', index = False)
+    elif RESIDUALS == True and NO_NAT_FLOW_SITES == False:
+        submission.to_csv('submission_residuals_23_site_ids.csv', index = False)
+    elif RESIDUALS == False and NO_NAT_FLOW_SITES == True:
+        submission.to_csv('submission_volume_3_site_ids.csv', index = False)
 #Hyperparameters tuning
 if RUN_HYPERPARAMS_TUNING == True:
-    #Set if that's a final tuning. There are 2 types, initial one, where wide
-    #range of hyperparams is used to determine area where results are optimal
-    #and final one, where based on the results of the initial tuning,
-    #hyperparams space is narrowed
-    FINAL_TUNING = False
     if FINAL_TUNING == True:
         path_suff = 'final'
     else:
         path_suff = 'initial'
     #Maximum number of LightGBM model iterations
     NUM_BOOST_ROUND = 2000
-    #All months should take 15-40 hours to run. It is recommended to optimize
-    #one year at a time
+    #All months should take 35-50 hours to run. It is recommended to optimize
+    #one month at a time
     for issue_month in tqdm(issue_months):
-        #Choose features from given month
-        if issue_month in [1, 2]:
-            #Use a smaller number of iterations for final tuning
-            if FINAL_TUNING == True:
-                #Use a smaller number of iterations for final tuning. More
-                #iterations than in later months as it is quicker to execute
-                N_TRIALS = 80
+        if NO_NAT_FLOW_SITES == False:
+            #Choose features from given month
+            if issue_month in [1, 2]:
+                #Jan/Feb number of trials
+                if FINAL_TUNING == True:
+                    N_TRIALS = 80
+                else:
+                    N_TRIALS = 150
+            elif issue_month in [3, 4]:
+                #Mar/Apr number of trials. It's a little smaller, as they
+                #should take longer
+                if FINAL_TUNING == True:
+                    N_TRIALS = 70
+                else:
+                    N_TRIALS = 130
             else:
-                #Use a larger number of iterations to determine best hyperparams space
-                N_TRIALS = 150
-        elif issue_month in [3, 4]:
-            #Use a smaller number of iterations for final tuning
-            if FINAL_TUNING == True:
-                #Use 20 iters less for initial and 10 less for final, as it
-                #takes more time to run
-                N_TRIALS = 70
+                #May-Jul number of trials for 23 site ids with naturalized flow
+                #history. May-July months have strong prediction power, so it
+                #isn't that important to train them for long. They also take
+                #more time for training 1 iteration and there is additionally
+                #training for 3 site ids to run
+                if FINAL_TUNING == True:
+                    N_TRIALS = 50
+                else:
+                    N_TRIALS = 60
+            train_feat = feat_dict[issue_month]
+            sampler = TPESampler(seed = 22) #to get the same results all the time
+            #Perform hyperparameters tuning. Ranges of values to select from are
+            #already chosen in the function
+            study = optuna.create_study(direction = 'minimize', sampler = sampler)
+            if RESIDUALS == True:
+                study.optimize(lambda trial: objective(trial,
+                                                       train_23,
+                                                       labels_residuals,
+                                                       issue_month,
+                                                       years_cv,
+                                                       YEAR_RANGE,
+                                                       train_feat,
+                                                       categorical,
+                                                       min_max_site_id,
+                                                       PATH_DISTR,
+                                                       distr_perc_dict,
+                                                       NUM_BOOST_ROUND,
+                                                       NUM_BOOST_ROUND_START,
+                                                       EARLY_STOPPING_ROUNDS,
+                                                       EARLY_STOPPING_STEP,
+                                                       FINAL_TUNING,
+                                                       RESIDUALS,
+                                                       labels_23),
+                               n_trials = N_TRIALS)        
             else:
-                #Use a larger number of iterations to determine best hyperparams space
-                N_TRIALS = 130
+                study.optimize(lambda trial: objective(trial,
+                                                       train,
+                                                       labels,
+                                                       issue_month,
+                                                       years_cv,
+                                                       YEAR_RANGE,
+                                                       train_feat,
+                                                       categorical,
+                                                       min_max_site_id,
+                                                       PATH_DISTR,
+                                                       distr_perc_dict,
+                                                       NUM_BOOST_ROUND,
+                                                       NUM_BOOST_ROUND_START,
+                                                       EARLY_STOPPING_ROUNDS,
+                                                       EARLY_STOPPING_STEP,
+                                                       FINAL_TUNING,
+                                                       RESIDUALS,
+                                                       pd.Series([])),
+                               n_trials = N_TRIALS)
+            #Save study from given month
+            joblib.dump(study,
+                        f"results/hyperparams_tuning/study_{path_suff}_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
         else:
-            #Use a smaller number of iterations for final tuning. 5, 6 and 7
-            #months have strong prediction power, so it isn't that important
-            #to train them for long. They take also more time for 1 iteration
-            #to run
-            if FINAL_TUNING == True:
-                #Use a smaller number of iterations for final tuning
-                N_TRIALS = 60
-            else:
-                #Use a larger number of iterations to determine best hyperparams space
-                N_TRIALS = 100
-        train_feat = feat_dict[issue_month]
-        sampler = TPESampler(seed = 22) #to get the same results all the time
-        #Perform hyperparameters tuning. Ranges of values to select from are
-        #already chosen in the function
-        study = optuna.create_study(direction = 'minimize', sampler = sampler)
-        study.optimize(lambda trial: objective(trial,
-                                               train,
-                                               labels,
-                                               issue_month,
-                                               years_cv,
-                                               YEAR_RANGE,
-                                               train_feat,
-                                               categorical,
-                                               min_max_site_id,
-                                               PATH_DISTR,
-                                               distr_perc_dict,
-                                               NUM_BOOST_ROUND,
-                                               NUM_BOOST_ROUND_START,
-                                               EARLY_STOPPING_ROUNDS,
-                                               EARLY_STOPPING_STEP,
-                                               FINAL_TUNING),
-                       n_trials = N_TRIALS)
-        #Save study from given month
-        joblib.dump(study,
-                    f"results/hyperparams_tuning/study_{path_suff}_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
+            #May-Jul number of trials for 3 site ids. The number of iterations
+            #is smaller, as it is only for 3 site ids predictions but still
+            #requiring training on all 26 site ids.
+            N_TRIALS = 40
+            sampler = TPESampler(seed = 22) #to get the same results all the time
+            #Perform hyperparameters tuning. Ranges of values to select from are
+            #already chosen in the function
+            study = optuna.create_study(direction = 'minimize', sampler = sampler)
+            study.optimize(lambda trial: objective(trial,
+                                                   train,
+                                                   labels,
+                                                   issue_month,
+                                                   years_cv,
+                                                   YEAR_RANGE,
+                                                   feat_dict_no_nat_flow[issue_month],
+                                                   categorical,
+                                                   min_max_site_id,
+                                                   PATH_DISTR,
+                                                   distr_perc_dict_no_nat_flow,
+                                                   NUM_BOOST_ROUND,
+                                                   NUM_BOOST_ROUND_START,
+                                                   EARLY_STOPPING_ROUNDS,
+                                                   EARLY_STOPPING_STEP,
+                                                   FINAL_TUNING,
+                                                   RESIDUALS,
+                                                   pd.Series([]),
+                                                   NO_NAT_FLOW_SITES),
+                           n_trials = N_TRIALS)
+            #Save study from given month
+            joblib.dump(study,
+                        f"results/hyperparams_tuning/study_3_site_ids_{pd.to_datetime('today').strftime('%Y_%m_%d_%H_%M_%S')}_month_{issue_month}.pkl")
 
 #Train models for each month and keep them in different lists according to
 #quantiles

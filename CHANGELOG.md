@@ -1,10 +1,12 @@
 The changelog was created to keep track of most important changes between different stages of the competition (Hindcast Stage, Forecast Stage, Final Prize Stage).
 
 # Changes between Forecast Stage and Final Prize Stage
+* added volume residuals prediction for May-Jul models for 23 site ids (new function lgbm_cv_residuals)
+* added May-Jul predictions for 3 site ids without nat flow previous values from a given water year, model is still built for all site ids but only 3 are evaluated (incorporated into lgbm_cv function)
 * added better DISTR_PERC for February and March predictions
 * added final_preds pipeline (predictions from LOOCV)
 * added pdsi_prev_to_last_month_diff
-* addded CDS Copernicus forecasts processing, both with and without late Jun/Jul forecasts
+* added CDS Copernicus forecasts processing, both with and without late Jun/Jul forecasts
 * added CDS data processing
 * added different hyperparms range to optimize for early months (1, 2)
 * added optimizing RMS of results in CV and hyperparams tuning
