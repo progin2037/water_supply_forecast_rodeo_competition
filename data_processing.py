@@ -4,16 +4,17 @@ import pickle
 import joblib
 import os
 
+import time
+start = time.time()
+
 from utils import ReadAllData, years_cv, get_outliers, create_cds_dataframe
+#ReadAllData should take about 30-45 minutes to execute if run for the first time
 
 from feature_engineering import get_aggs_month_day, get_aggs_month,\
 preprocess_monthly_naturalized_flow, preprocess_snotel, get_prev_monthly,\
 get_prev_daily, nat_flow_sum_cumul_since_apr, get_prev_cds_data,\
 get_prev_cds_forecasts_data
 
-import time
-
-start = time.time()
 
 #Set threshold for outliers removal. A good practise is to set z-score threshold
 #to 3 but based on data exploration, it's save to remove more outliers within
@@ -241,6 +242,108 @@ train = get_aggs_month_day(snotel,
                            suffix = '_Apr',
                            month_since = 4)
 
+#Get previous value of PREC_DAILY
+train = pd.merge(train,
+                 snotel[['PREC_DAILY', 'site_id', 'issue_date']],
+                 how = 'left',
+                 on = ['site_id', 'issue_date'])
+train.rename({'PREC_DAILY': 'PREC_DAILY_prev'}, axis = 1, inplace = True)
+
+#PREC_DAILY_Apr_mean
+train = get_aggs_month_day(snotel,
+                           train,
+                           ['PREC_DAILY'],
+                           ['mean'],
+                           issue_months,
+                           issue_days,
+                           'year_forecast',
+                           suffix = '_Apr',
+                           month_since = 4)
+
+#Get PREC_DAILY_Apr_prev_diff. Will have to put it into function
+
+#Necessary snotel processing again
+snotel = dfs.snotel.copy()
+
+#Add site_id to snotel
+sites_to_snotel_stations = dfs.sites_to_snotel_stations.copy()
+sites_to_snotel_stations['stationTriplet'] = sites_to_snotel_stations.stationTriplet.str.replace(':', '_')
+snotel = pd.merge(snotel,
+                  sites_to_snotel_stations,
+                  how = 'left',
+                  left_on = 'STATION',
+                  right_on = 'stationTriplet')
+#Get rid of redundant features
+snotel.drop(['STATION', 'in_basin', 'stationTriplet'], axis = 1, inplace = True)
+#Get average values for site_id and date (exclude STATIONS)
+snotel = snotel.groupby(['date', 'site_id']).mean().reset_index()
+
+#Add year, month, day
+snotel_dates_split = snotel.date.str.split('-')
+snotel['year'] = snotel_dates_split.str[0].astype('int')
+snotel['month'] = snotel_dates_split.str[1].astype('int')
+snotel['day'] = snotel_dates_split.str[2].astype('int')
+
+#Takes about ~5 seconds per day-month iteration due to handling NaNs in quantiles
+#Set October, November, December to next year for year_forecast
+snotel['year_forecast'] = snotel.year
+snotel.loc[snotel['month'].astype(int).between(10, 12), 'year_forecast'] = snotel.year_forecast + 1
+#Get data from Mar 30 (available 1 day before Apr)
+snotel_Mar_31 = snotel[(snotel.month == 3) & (snotel.day == 30)]
+#Keep only columns to merge
+snotel_Mar_31 = snotel_Mar_31[['site_id', 'PREC_DAILY', 'year']]
+snotel_Mar_31 = snotel_Mar_31[snotel_Mar_31.PREC_DAILY.notna()]
+
+snotel_Mar_31.columns = ['site_id', 'PREC_DAILY_Mar_31', 'year']
+
+#Merge with train
+train = pd.merge(train,
+         snotel_Mar_31,
+         how = 'left',
+         on = ['site_id', 'year'])
+
+#Fill with NaNs if months before April
+train.loc[~train.month.isin([4, 5, 6, 7]), 'PREC_DAILY_Mar_31'] = np.nan
+
+#Get difference between last day PREC and Mar 31
+train['PREC_DAILY_Apr_prev_diff'] = train.PREC_DAILY_prev - train.PREC_DAILY_Mar_31
+
+
+#Get WTEQ_DAILY_Jul_prev_diff
+#Get data from Jun 29 (available one day before Jul)
+snotel_Jun_30 = snotel[(snotel.month == 6) & (snotel.day == 29)]
+#Keep only columns to merge
+snotel_Jun_30 = snotel_Jun_30[['site_id', 'WTEQ_DAILY', 'year']]
+snotel_Jun_30.columns = ['site_id', 'WTEQ_DAILY_Jun_30', 'year']
+#Merge with train
+train = pd.merge(train,
+         snotel_Jun_30,
+         how = 'left',
+         on = ['site_id', 'year'])
+#Fill with NaNs if months before Jul
+train.loc[train.month != 7, 'WTEQ_DAILY_Jun_30'] = np.nan
+
+#Get difference between last day and Jun 29
+train['WTEQ_DAILY_Jul_prev_diff'] = train.WTEQ_DAILY_prev - train.WTEQ_DAILY_Jun_30
+
+#Get WTEQ_DAILY_Jun_prev_diff
+#Get data from May 30 (available 1 day before Jun)
+snotel_May_31 = snotel[(snotel.month == 5) & (snotel.day == 30)]
+#Keep only columns to merge
+snotel_May_31 = snotel_May_31[['site_id', 'WTEQ_DAILY', 'year']]
+snotel_May_31.columns = ['site_id', 'WTEQ_DAILY_May_31', 'year']
+#Merge with train
+train = pd.merge(train,
+         snotel_May_31,
+         how = 'left',
+         on = ['site_id', 'year'])
+#Fill with NaNs if months isn't Jun
+train.loc[train.month != 6, 'WTEQ_DAILY_May_31'] = np.nan
+
+#Get difference between last day and May 30
+train['WTEQ_DAILY_Jun_prev_diff'] = train.WTEQ_DAILY_prev - train.WTEQ_DAILY_May_31
+
+
 #Append PDSI_prev (latest available average PDSI value)
 pdsi = dfs.pdsi.copy()
 train = get_prev_daily(df_aggs = pdsi,
@@ -267,8 +370,10 @@ train = get_prev_daily(df_aggs = pdsi,
 train['pdsi_prev_to_last_month_diff'] = train.pdsi_prev - train.pdsi_prev_30_days
 
 #CDS data
+
+#Get sd_prev
 #Get CDS file name to add to train
-cds_file = 'cds_monthly_swvl'
+cds_file = 'cds_monthly_snow'
 #If the script is run for the first time, create a .pkl file for a given CDS
 #data, as the file wasn't yet created from .nc
 if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
@@ -277,12 +382,12 @@ if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
                          site_ids_unique,
                          cds_file,
                          False)
-#Get cds_monthly_swvl latest data before issue_date
+#Get sd_prev latest data before issue_date
 train = get_prev_cds_data(f'data/cds/{cds_file}.pkl',
                            train,
                            5,
-                           [''], #doesn't matter for cds_monthly_swvl
-                           ['']) #doesn't matter for cds_monthly_swvl
+                           ['sd'],
+                           ['sd_prev'])
 
 #CDS Copernicus forecasts
 #Set a dictionary with file data names and months on which predictions were
@@ -291,8 +396,7 @@ cds_forecasts_files = {'seasonal_dec': 12,
                        'seasonal_jan': 1,
                        'seasonal_feb': 2,
                        'seasonal_mar': 3,
-                       'seasonal_apr': 4,
-                       'seasonal_may': 5}
+                       'seasonal_apr': 4}
 #Set columns with forecasts to append
 cols_forecasts = ['sd']
 #Set column suffixes, all created columns will have it appended
@@ -384,3 +488,4 @@ train.to_pickle('data/train_test_final.pkl')
 
 end = time.time()
 elapsed = end - start
+print(elapsed)

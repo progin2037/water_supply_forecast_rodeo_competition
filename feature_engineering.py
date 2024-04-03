@@ -496,6 +496,8 @@ def get_prev_cds_data(path: str,
         df_main.issue_date_cds - pd.DateOffset(months = 1)
     df_main['issue_date_cds'] = df_main.issue_date_cds.astype('str')
     if path == 'data/cds/cds_monthly_swvl.pkl':
+        #[REMARK] cds_monthly_swvl wasn't used in the final solution
+
         #Add an exception for cds_swvl. For this data, get an average of all 
         #4 swfl columns instead of getting all of them separately
         stats_cds['swvl_prev_avg'] = stats_cds[stats_cds.columns[
