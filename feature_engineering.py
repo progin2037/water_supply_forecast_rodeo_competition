@@ -238,7 +238,7 @@ def get_prev_daily(df_aggs: pd.DataFrame,
                    new_col_names: list,
                    date_col: str,
                    site_id_col: str,
-                   issue_days_unique: np.array,
+                   issue_days_unique: np.ndarray,
                    days_lag: int) -> pd.DataFrame:
     """
     Get previous available value before issue date from a monthly DataFrame.
@@ -252,7 +252,7 @@ def get_prev_daily(df_aggs: pd.DataFrame,
         new_col_names (list): New names of columns to append
         date_col (str): df_aggs date column to aggregate on
         site_id_col (str): A column from df_aggs with site_id information
-        issue_days_unique (list): A list of issue days from df_main. It should
+        issue_days_unique (np.ndarray): A list of issue days from df_main. It should
             have values of 1, 8, 15, 22
         days_lag (int): How many days should be added to date from df_aggs to
             be constistent with issue dates from df_main

@@ -115,7 +115,7 @@ def train_cv(train: pd.DataFrame,
              num_boost_round_month: int,
              alpha: float,
              fold: int,
-             lgb_models: dict) -> tuple[np.array, dict]:
+             lgb_models: dict) -> tuple[np.ndarray, dict]:
     """
     Training pipeline for given fold-quantile combination. Creates model for
     given fold for the first time or continues training previous model until
@@ -142,7 +142,7 @@ def train_cv(train: pd.DataFrame,
         lgb_models (dict): A dictionary of LightGBM models. One of its keys
             (folds) have to be updated in this iteration
     Returns:
-        preds (np.array): Predictions from given quantile and fold
+        preds (np.ndarray): Predictions from given quantile and fold
         lgb_models (dict): A dictionary of LightGBM models with updated fold
             values
     """
