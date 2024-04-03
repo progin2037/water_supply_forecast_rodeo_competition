@@ -75,8 +75,8 @@ if RUN_CV == True or RUN_HYPERPARAMS_TUNING == True:
                        3: 0.45,
                        4: 0.3,
                        5: 0.25,
-                       6: 0.2,
-                       7: 0.1}
+                       6: 0.15,
+                       7: 0.05}
     #Use many years in a fold or not
     YEAR_RANGE = False
     #Initiate early stopping from this iteration
