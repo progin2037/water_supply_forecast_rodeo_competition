@@ -11,6 +11,7 @@ backcall==0.2.0
 beautifulsoup4==4.12.3
 bleach==6.1.0
 cachetools==5.3.3
+cdsapi==0.6.1
 certifi==2024.2.2
 cffi==1.16.0
 cftime==1.6.3
@@ -29,10 +30,12 @@ dataretrieval==1.0.6
 debugpy==1.8.1
 decorator==5.1.1
 defusedxml==0.7.1
+eccodes==1.7.0
 entrypoints==0.4
 exceptiongroup==1.2.0
 executing==2.0.1
 fastjsonschema==2.19.1
+findlibs==0.0.5
 fiona==1.9.5
 fonttools==4.49.0
 fqdn==1.5.1
