@@ -458,6 +458,61 @@ def preprocess_snotel(snotel: pd.DataFrame,
     return snotel
 
 
+def get_snotel_diff(df_main: pd.DataFrame,
+                    col_df_main: str,
+                    col_snotel: str,
+                    new_col: str,
+                    month: int,
+                    day: int,
+                    snotel: pd.DataFrame,
+                    sites_to_snotel_stations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Get a difference between latest available SNOTEL variable value and the
+    value from the selected month-day combination from the given year.
+    
+    Args:
+        df_main (pd.DataFrame): The main DataFrame to be merged with
+        col_df_main (str): A column to calculate difference for from df_main
+        col_snotel (str): A column from SNOTEL with values to get
+        new_col (str): An output column name
+        month (int): Values from this month should be used
+        day (int): Values from this day should be used. The combination of
+            day-month is used to determine values to select, then the results
+            are additionally grouped by year. It should be taken into account
+            that SNOTEL has a 1 day delay, so for the latest available data in
+            March, Mar 30 instead of Mar 31 should be used
+        snotel (pd.DataFrame): SNOTEL DataFrame
+        sites_to_snotel_stations (pd.DataFrame): site_id-station mapping
+    Returns:
+        df_main (pd.DataFrame): The main DataFrame with appended difference
+            between latest value of the SNOTEL column and the value from
+            the specified period
+    """
+    #Preprocess SNOTEL
+    snotel = preprocess_snotel(snotel,
+                               sites_to_snotel_stations)
+    #Get SNOTEL data from the provided month-day combination
+    snotel_snippet = snotel[(snotel.month == month) & (snotel.day == day)]
+    #Keep only columns to merge, remove those with missing values
+    snotel_snippet = snotel_snippet[['site_id', col_snotel, 'year']]
+    snotel_snippet = snotel_snippet[snotel_snippet[col_snotel].notna()]
+    #Rename columns. For simplicity, use the final difference column name
+    snotel_snippet.columns = ['site_id', new_col, 'year']
+    #Merge with train based on site_id and year
+    df_main = pd.merge(df_main,
+                       snotel_snippet,
+                       how = 'left',
+                       on = ['site_id', 'year'])
+    #Fill column values with NaNs if issue data is before month-day combination
+    df_main.loc[(df_main.month < month) |
+                ((df_main.month == month) & (df_main.day < day)),
+                new_col] = np.nan
+    #Get difference between the latest available value and the value from
+    #the selected period
+    df_main[new_col] = df_main[col_df_main] - df_main[new_col]  
+    return df_main
+
+
 def get_prev_cds_data(path: str,
                       df_main: pd.DataFrame,
                       issue_day: int,
