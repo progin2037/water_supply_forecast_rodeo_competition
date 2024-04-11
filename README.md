@@ -11,12 +11,17 @@ The solution makes predictions based on the approach of creating LightGBM models
 The aim of the first stage of the competition (Hindcast Stage, hidcast_stage branch, https://www.drivendata.org/competitions/257/reclamation-water-supply-forecast-hindcast/) was
 to make predictions for historical data (2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023).
 
-Second one (Forecast Stage, forecast_stage branch, https://www.drivendata.org/competitions/259/reclamation-water-supply-forecast/) is a real-time stage. Predictions are made on the competition
+The second one (Forecast Stage, forecast_stage branch, https://www.drivendata.org/competitions/259/reclamation-water-supply-forecast/) is a real-time stage. Predictions are made on the competition
 server for water volume forecasts between April (March for one hydrologic site) and July (June for one hydrologic site) 2024.
 
 In the third stage (Final Prize Stage, main branch, https://www.drivendata.org/competitions/262/reclamation-water-supply-forecast-final/) the objective was to make predictions using LOOCV
 (Leave-One-Out Cross Validation) with 20 folds where one of the years between 2004-2023 is a test set. It is different from the other stages in the way that using this fold CV year data for
 creating aggregations is prohibited, so each fold's data has to be processed separately.
+
+Water supply forecast combining LightGBM model with distribution estimation approach.pdf contains a 12-page summary of the solution.
+
+Some scripts are only available for some stages (for example get_predictions.py was removed from the Final Stage, as predictions were run in the LOOCV pipeline, as well as inference/ directory,
+as inference wasn't needed for the Final Stage). They were removed to avoid confusion that some scripts exist but aren't used. The removed scripts could still be found in other branches.
 
 ## Content
 1. Scripts to run to create and test models
@@ -51,13 +56,20 @@ creating aggregations is prohibited, so each fold's data has to be processed sep
 	(https://www.drivendata.org/competitions/257/reclamation-water-supply-forecast-hindcast/page/809/).
 7. Notebooks (notebooks/)
 	1. Additional analyses.
+	2. CDS data download. It was provided in a notebook to facilitate keeping track of download progress.
+8. Water supply forecast combining LightGBM model with distribution estimation approach.pdf - a 12-page summary of the solution.
 ## How to run
 The solution was created using Python version 3.10.13.
 
-*Keep in mind that results won't be exactly the same as those from models/ repo directory when downloading data again, as some of the datasets could be updated (it happened with USGS streamflow).*
+*Keep in mind that results won't be exactly the same as those from models/ repo directory when downloading data again, as some of the datasets could be updated (it happened for example
+with USGS streamflow. There was a data update in 2024 but data available on 2023-11-10 was used in the solution, to not take into account future update that wasn't available at a time
+when the predictions would have been made if it was run real-time).*
 
 1. Clone this repo.
 2. Install packages from requirements (`pip install -r requirements.txt`).
+	1. If you run into problems with using eccodes packages, try to install it with conda (`conda install -c conda-forge eccodes==2.33.0`)
+	2. Follow the official guidelines to use CDS API https://cds.climate.copernicus.eu/api-how-to. It requires creating an account, saving API key and agreeing to the Terms of Use
+	of every datasets that you intend to download. When running CDS download for the first time, a link to agreeing to the Terms should be provided.
 3. Create data/ directory within the repo. All data should be downloaded to this directory.
 4. Download data from the competition website https://www.drivendata.org/competitions/254/reclamation-water-supply-forecast-dev/data/. 
 5. Download additional data from the competition repo https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime.
@@ -71,8 +83,8 @@ The solution was created using Python version 3.10.13.
 	5. Follow the instructions from the Requirements and installation section from Data reading, installing wsfr-read package from data_reading directory (`pip install ./data_reading/`)
 	(https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime/tree/main?tab=readme-ov-file#requirements-and-installation-1). Thanks to that, auxiliary library for
 	reading data downloaded in the previous point could be used.
+	6. Download CDS data using notebooks/CDS downloads.ipynb (https://github.com/progin2037/water_supply_forecast_rodeo_competition/blob/main/notebooks/CDS%20downloads.ipynb).
 6. Run data_processing.py.
 7. Run model_params.py.
 8. [OPTIONAL] Run distribution_estimates.py. Output from this script is already saved in this repository in data/distr, as running the script takes about 4-6 hours.
 9. Run model_training.py.
-10. Run get_predictions.py.
