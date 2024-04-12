@@ -32,6 +32,7 @@ as inference wasn't needed for the Final Stage). They were removed to avoid conf
 	RUN_HYPERPARAMS_TUNING is set to False. Models' hyperparameters were already read from model_params.py but creating hyperparameters by yourself is also supported to check
 	if hardcoded hyperparameters are indeed the output of running the function. Keep in mind that hyperparameters optimization takes long (20-50 hours).
 	5. get_predictions.py - it runs trained models on the test data and saves the results. Forecast Stage doesn't use a static test set	but it is still helpful to have a working prediction pipeline.
+	6. cds_downloads.py - it downloads CDS data (CDS monthly data and seasonal forecasts). However, using notebooks/CDS downloads.ipynb is recommended to easier keep track of already downloaded data.
 2. Auxiliary scripts
 	1. utils.py - general utilities, functions/list/dictionary that could be used for different tasks.
 	2. feature_engineering.py - functions to facilitate feature engineering.
@@ -83,7 +84,9 @@ when the predictions would have been made if it was run real-time).*
 	5. Follow the instructions from the Requirements and installation section from Data reading, installing wsfr-read package from data_reading directory (`pip install ./data_reading/`)
 	(https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime/tree/main?tab=readme-ov-file#requirements-and-installation-1). Thanks to that, auxiliary library for
 	reading data downloaded in the previous point could be used.
-	6. Download CDS data using notebooks/CDS downloads.ipynb (https://github.com/progin2037/water_supply_forecast_rodeo_competition/blob/main/notebooks/CDS%20downloads.ipynb).
+	6. Download CDS data. There are 2 options to achieve that:
+		1. [Recommended] Use notebooks/CDS downloads.ipynb (https://github.com/progin2037/water_supply_forecast_rodeo_competition/blob/main/notebooks/CDS%20downloads.ipynb).
+		2. Use cds_downloads.py (https://github.com/progin2037/water_supply_forecast_rodeo_competition/blob/main/cds_downloads.py). This way, it will be harder to keep track of already downloaded data.
 6. Run data_processing.py.
 7. Run model_params.py.
 8. [OPTIONAL] Run distribution_estimates.py. Output from this script is already saved in this repository in data/distr, as running the script takes about 4-6 hours.
