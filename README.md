@@ -18,7 +18,7 @@ In the third stage (Final Prize Stage, main branch, https://www.drivendata.org/c
 (Leave-One-Out Cross Validation) with 20 folds where one of the years between 2004-2023 is a test set. It is different from the other stages in the way that using this fold CV year data for
 creating aggregations is prohibited, so each fold's data has to be processed separately.
 
-Water supply forecast combining LightGBM model with distribution estimation approach.pdf contains a 12-page summary of the solution.
+**Water supply forecast combining LightGBM model with distribution estimation approach.pdf contains a 12-page summary of the solution.**
 
 Some scripts are only available for some stages (for example get_predictions.py was removed from the Final Stage, as predictions were run in the LOOCV pipeline, as well as inference/ directory,
 as inference wasn't needed for the Final Stage). They were removed to avoid confusion that some scripts exist but aren't used. The removed scripts could still be found in other branches.
@@ -53,7 +53,7 @@ as inference wasn't needed for the Final Stage). They were removed to avoid conf
 	2. CDS data download. It was provided in a notebook to facilitate keeping track of download progress.
 6. Water supply forecast combining LightGBM model with distribution estimation approach.pdf - a 12-page summary of the solution.
 ## How to run
-The solution was created using Python version 3.10.13.
+The solution was created using Python version 3.10.13 on Windows 11.
 
 *Keep in mind that results won't be exactly the same as those from models/ repo directory when downloading data again, as some of the datasets could be updated (it happened for example
 with USGS streamflow. There was a data update in 2024 but data available on 2023-11-10 was used in the solution, to not take into account future update that wasn't available at a time
@@ -61,9 +61,9 @@ when the predictions would have been made if it was run real-time).*
 
 1. Clone this repo.
 2. Install packages from requirements (`pip install -r requirements.txt`).
-	1. If you run into problems with using eccodes packages, try to install it with conda (`conda install -c conda-forge eccodes==2.33.0`)
+	1. If you run into problems with using eccodes package, try to install it with conda (`conda install -c conda-forge eccodes==2.33.0`)
 	2. Follow the official guidelines to use CDS API https://cds.climate.copernicus.eu/api-how-to. It requires creating an account, saving API key and agreeing to the Terms of Use
-	of every datasets that you intend to download. When running CDS download for the first time, a link to agreeing to the Terms should be provided.
+	of every dataset that you intend to download. When running CDS download for the first time, a link to agreeing to the Terms should be accessible within code output.
 3. Create data/ directory within the repo. All data should be downloaded to this directory.
 4. Download data from the competition website https://www.drivendata.org/competitions/254/reclamation-water-supply-forecast-dev/data/. 
 5. Download additional data from the competition repo https://github.com/drivendataorg/water-supply-forecast-rodeo-runtime.
