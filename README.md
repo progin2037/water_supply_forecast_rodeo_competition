@@ -27,11 +27,12 @@ as inference wasn't needed for the Final Stage). They were removed to avoid conf
 1. Scripts to run to create and test models
 	1. cds_downloads.py - it downloads CDS data (CDS monthly data and seasonal forecasts). However, using notebooks/CDS downloads.ipynb is recommended to easier keep track of already downloaded data.
 	2. data_processing.py - it processes the data and saves a DataFrame to be used in model_training.py.
-	3. model_params.py - contains model hyperparameters and features for different months to be used in model_training.py and get_predictions.py. It saves these parameters as files for simplicity.
-	4. distribution_estimates.py - it fits data for each hydrologic site to different distributions, optimizes parameters for the distribution and selects distributions with the best fit to data. 
+	3. model_params.py - contains model hyperparameters and features for different months to be used in model_training.py. It saves these parameters as files for simplicity.
+	4. distribution_estimates.py - it fits data for each hydrologic site to different distributions, optimizes parameters for the distribution, selects distributions with the best fit to data,
+		adds manually chosen amendments to best distribution fits and saves results for each LOOCV fold (excluding given LOOCV year from the processing).
 	5. model_training.py - 	trains the models. There are different parameters to choose from for this script. By default, RUN_FINAL_SOLUTION is set to True, which ignores other parameters and
-	trains all models required to obtain the final solution. Models' hyperparameters were already read from model_params.py but creating hyperparameters by yourself is also supported to check
-	if hardcoded hyperparameters are indeed the output of running the function. Keep in mind that hyperparameters optimization takes long (20-50 hours).
+	trains all models required to obtain the final solution. Models' hyperparameters were already read from model_params.py. Still, creating hyperparameters by yourself is also supported to check
+	if hardcoded hyperparameters are indeed the outputs of running the function. Keep in mind that hyperparameters optimization takes long (20-50 hours).
 2. Auxiliary scripts
 	1. utils.py - general utilities, functions/list/dictionary that could be used for different tasks.
 	2. feature_engineering.py - functions to facilitate feature engineering.
@@ -47,11 +48,12 @@ as inference wasn't needed for the Final Stage). They were removed to avoid conf
 	2. Estimated parameters were saved to facilitate the process, as running distribution_estimates.py for all years takes about 4-6 hours.
 4. Results from repo (results/)
 	1. Contains submission_2024_03_28.pkl with final results submitted to the competition.
-	2. Contains hyperparameters tuning results for the Forecast Stage of the competition, one per month (different quantiles were optimized together).
+	2. Contains hyperparameters tuning results for the Final Stage of the competition, one per month (different quantiles were optimized together).
 5. Notebooks (notebooks/)
 	1. Additional analyses.
 	2. CDS data download. It was provided in a notebook to facilitate keeping track of download progress.
 6. Water supply forecast combining LightGBM model with distribution estimation approach.pdf - a 12-page summary of the solution.
+
 ## How to run
 The solution was created using Python version 3.10.13 on Windows 11.
 
@@ -82,5 +84,5 @@ when the predictions would have been made if it was run real-time).*
 		2. Use cds_downloads.py (https://github.com/progin2037/water_supply_forecast_rodeo_competition/blob/main/cds_downloads.py). This way, it will be harder to keep track of already downloaded data.
 6. Run data_processing.py.
 7. Run model_params.py.
-8. [OPTIONAL] Run distribution_estimates.py. Output from this script is already saved in this repository in data/distr, as running the script takes about 4-6 hours.
+8. [Optional] Run distribution_estimates.py. Output from this script is already saved in this repository in data/distr, as running the script takes about 4-6 hours.
 9. Run model_training.py.
