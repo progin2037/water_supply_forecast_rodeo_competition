@@ -6,7 +6,8 @@ from tqdm import tqdm
 import pickle
 from loguru import logger
 
-from utils import ReadAllData, get_outliers, all_distr_dict, distr_param_values_to_dict
+from utils import ReadAllData, years_cv, get_outliers, all_distr_dict,\
+    distr_param_values_to_dict
 
 import time
 
@@ -24,27 +25,6 @@ site_ids_unique = dfs.site_ids_unique.copy()
 df = df[df.volume.notna()].reset_index(drop = True)
 #Keep train data from all years
 df_all_years = df.copy()
-#LOOCV years to fit distributions. One of them will be deleted for each fold
-years_cv = [2004,
-            2005,
-            2006,
-            2007,
-            2008,
-            2009,
-            2010,
-            2011,
-            2012,
-            2013,
-            2014,
-            2015,
-            2016,
-            2017,
-            2018,
-            2019,
-            2020,
-            2021,
-            2022,
-            2023]
 
 #Remove troublesome distributions
 distr_trouble = ['kstwo', 'rv_continuous', 'rv_histogram', 'studentized_range',
@@ -55,8 +35,8 @@ for distr in distr_trouble:
 
 #Create data\distr directory if it doesn't exist. Distribution estimates will
 #be stored in this path
-models_path = Path('data/distr')
-models_path.mkdir(parents = True, exist_ok = True)
+distr_path = Path('data/distr')
+distr_path.mkdir(parents = True, exist_ok = True)
 
 ###############################################################################
 #Fit distributions to data and save
@@ -124,7 +104,7 @@ for year_cv in years_cv:
     distr_results = distr_results.\
         sort_values(['site_id', 'score', 'distribution']).reset_index(drop = True)
     #Iterate over amendment pairs and add them to a joint list.
-    #The format of the output is adjusted to best distributions format
+    #The format of the output is adjusted to the best distributions format
     amend_list_this_year = []
     for site_id, distr in amendments_site_to_distr_dict.items():
         #Get parameters fitted to the distribution

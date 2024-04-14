@@ -15,7 +15,7 @@ from loguru import logger
 from wsfr_read.streamflow.usgs_streamflow import read_usgs_streamflow_data
 
 def display_first_n_last_n_rows(data: pd.DataFrame,
-                                n: int=5):
+                                n: int = 5):
     """
     Display n first and last rows of the dataframe.
     
@@ -63,13 +63,14 @@ def merge_usgs_streamflow(site_ids_unique: list,
 def get_paths(path_dir: str,
               extension: str) -> list:
     """
-    Get all paths from a given directory and its subfolders.
+    Get all paths with a provided extension from a given directory and its
+    subfolders.
     
     Args:
         path_dir (str): A main directory path
         extension (str): An extension of file names to iterate over
     Returns:
-        paths (list): All paths within given directory
+        paths (list): All paths within the given directory
     """
     paths = []
     for root, dirs, files in os.walk(path_dir):
@@ -122,7 +123,7 @@ def read_snotel(dir_name: str) -> pd.DataFrame:
             df_to_add = pd.read_csv(path)
             #Append station
             df_to_add['STATION'] = station
-            #Append to dafarame
+            #Append to the DataFrame
             snotel_df = pd.concat([snotel_df, df_to_add], axis = 0, ignore_index = True)
         #Save full snotel data
         snotel_df.to_csv(snotel_full_path, index = False)
@@ -176,7 +177,7 @@ def get_pdsi_aggs(dir_name: str,
                     max_val = np.nanmax(pdsi_data.daily_mean_palmer_drought_severity_index[num_day])
                     min_val = np.nanmin(pdsi_data.daily_mean_palmer_drought_severity_index[num_day])
                     med_val = np.nanmedian(pdsi_data.daily_mean_palmer_drought_severity_index[num_day])
-                    #Append results from a specificc forecast year - site_id combination
+                    #Append results from a specific forecast year - site_id combination
                     stats_pdsi.append([site_id, date, mean_val, max_val, min_val, med_val])
         #Create a dataframe from a list and save it to .pkl
         if paths_pdsi:
@@ -193,7 +194,6 @@ def get_pdsi_aggs(dir_name: str,
 
 def create_cds_dataframe(path: str,
                          geospatial: gpd.geodataframe.GeoDataFrame,
-                         site_ids_unique: list,
                          output_name: str,
                          all_touched: bool):
     """
@@ -203,7 +203,6 @@ def create_cds_dataframe(path: str,
         path (str): A path to .nc file
         geospatial (gpd.geodataframe.GeoDataFrame): site_id data that maps
             site_ids to polygons that localize them
-        site_ids_unique (list): A list of unique site_ids
         output_name (str): File name of created .pkl CDS DataFrame
         all_touched (bool): Specifies if centers of pixels should be within
             polygon (True) all just any small areas that touch the pixel (False).
@@ -363,7 +362,7 @@ def distr_param_values_to_dict(distr: str,
         #with params separated by ', '. Store different params in a list
         distr_params_names = distr_params_names.split(', ')    
         #Add 'loc' and 'scale' params as they aren't included but exist for all distributions
-        distr_params_names = distr_params_names  + ['loc'] + ['scale']
+        distr_params_names = distr_params_names + ['loc'] + ['scale']
     else:
         #Case when there aren't any arguments except for 'loc' and 'scale'
         distr_params_names = ['loc'] + ['scale']
@@ -378,7 +377,7 @@ def print_summary_outliers_distribution(df: pd.DataFrame,
                                         bins: int=30):
     """
     Print distribution summary with its outliers. Grouped by different site_ids,
-    it contains a table with outliers, plotted distribtution and the most
+    it contains a table with outliers, plotted distribution and the most
     important summary statistics for the given site_id.
     
     Args:
@@ -423,115 +422,115 @@ years_cv = [2004,
 
 #Create a dictionary with distributions to be fitted for distribution estimates
 all_distr_dict = {'alpha': stats.alpha,
- 'anglit': stats.anglit,
- 'arcsine': stats.arcsine,
- 'argus': stats.argus,
- 'beta': stats.beta,
- 'betaprime': stats.betaprime,
- 'bradford': stats.bradford,
- 'burr': stats.burr,
- 'burr12': stats.burr12,
- 'cauchy': stats.cauchy,
- 'chi': stats.chi,
- 'chi2': stats.chi2,
- 'cosine': stats.cosine,
- 'crystalball': stats.crystalball,
- 'dgamma': stats.dgamma,
- 'dweibull': stats.dweibull,
- 'erlang': stats.erlang,
- 'expon': stats.expon,
- 'exponnorm': stats.exponnorm,
- 'exponpow': stats.exponpow,
- 'exponweib': stats.exponweib,
- 'f': stats.f,
- 'fatiguelife': stats.fatiguelife,
- 'fisk': stats.fisk,
- 'foldcauchy': stats.foldcauchy,
- 'foldnorm': stats.foldnorm,
- 'gamma': stats.gamma,
- 'gausshyper': stats.gausshyper,
- 'genexpon': stats.genexpon,
- 'genextreme': stats.genextreme,
- 'gengamma': stats.gengamma,
- 'genhalflogistic': stats.genhalflogistic,
- 'genhyperbolic': stats.genhyperbolic,
- 'geninvgauss': stats.geninvgauss,
- 'genlogistic': stats.genlogistic,
- 'gennorm': stats.gennorm,
- 'genpareto': stats.genpareto,
- 'gibrat': stats.gibrat,
- 'gompertz': stats.gompertz,
- 'gumbel_l': stats.gumbel_l,
- 'gumbel_r': stats.gumbel_r,
- 'halfcauchy': stats.halfcauchy,
- 'halfgennorm': stats.halfgennorm,
- 'halflogistic': stats.halflogistic,
- 'halfnorm': stats.halfnorm,
- 'hypsecant': stats.hypsecant,
- 'invgamma': stats.invgamma,
- 'invgauss': stats.invgauss,
- 'invweibull': stats.invweibull,
- 'johnsonsb': stats.johnsonsb,
- 'johnsonsu': stats.johnsonsu,
- 'kappa3': stats.kappa3,
- 'kappa4': stats.kappa4,
- 'ksone': stats.ksone,
- 'kstwo': stats.kstwo,
- 'kstwobign': stats.kstwobign,
- 'laplace': stats.laplace,
- 'laplace_asymmetric': stats.laplace_asymmetric,
- 'levy': stats.levy,
- 'levy_l': stats.levy_l,
- 'levy_stable': stats.levy_stable,
- 'loggamma': stats.loggamma,
- 'logistic': stats.logistic,
- 'loglaplace': stats.loglaplace,
- 'lognorm': stats.lognorm,
- 'loguniform': stats.loguniform,
- 'lomax': stats.lomax,
- 'maxwell': stats.maxwell,
- 'mielke': stats.mielke,
- 'moyal': stats.moyal,
- 'nakagami': stats.nakagami,
- 'ncf': stats.ncf,
- 'nct': stats.nct,
- 'ncx2': stats.ncx2,
- 'norm': stats.norm,
- 'norminvgauss': stats.norminvgauss,
- 'pareto': stats.pareto,
- 'pearson3': stats.pearson3,
- 'powerlaw': stats.powerlaw,
- 'powerlognorm': stats.powerlognorm,
- 'powernorm': stats.powernorm,
- 'rayleigh': stats.rayleigh,
- 'rdist': stats.rdist,
- 'recipinvgauss': stats.recipinvgauss,
- 'reciprocal': stats.reciprocal,
- 'rel_breitwigner': stats.rel_breitwigner,
- 'rice': stats.rice,
- 'rv_continuous': stats.rv_continuous,
- 'rv_histogram': stats.rv_histogram,
- 'semicircular': stats.semicircular,
- 'skewcauchy': stats.skewcauchy,
- 'skewnorm': stats.skewnorm,
- 'studentized_range': stats.studentized_range,
- 't': stats.t,
- 'trapezoid': stats.trapezoid,
- 'trapz': stats.trapz,
- 'triang': stats.triang,
- 'truncexpon': stats.truncexpon,
- 'truncnorm': stats.truncnorm,
- 'truncpareto': stats.truncpareto,
- 'truncweibull_min': stats.truncweibull_min,
- 'tukeylambda': stats.tukeylambda,
- 'uniform': stats.uniform,
- 'vonmises': stats.vonmises,
- 'vonmises_fisher': stats.vonmises_fisher,
- 'vonmises_line': stats.vonmises_line,
- 'wald': stats.wald,
- 'weibull_max': stats.weibull_max,
- 'weibull_min': stats.weibull_min,
- 'wrapcauchy': stats.weibull_min}
+                  'anglit': stats.anglit,
+                  'arcsine': stats.arcsine,
+                  'argus': stats.argus,
+                  'beta': stats.beta,
+                  'betaprime': stats.betaprime,
+                  'bradford': stats.bradford,
+                  'burr': stats.burr,
+                  'burr12': stats.burr12,
+                  'cauchy': stats.cauchy,
+                  'chi': stats.chi,
+                  'chi2': stats.chi2,
+                  'cosine': stats.cosine,
+                  'crystalball': stats.crystalball,
+                  'dgamma': stats.dgamma,
+                  'dweibull': stats.dweibull,
+                  'erlang': stats.erlang,
+                  'expon': stats.expon,
+                  'exponnorm': stats.exponnorm,
+                  'exponpow': stats.exponpow,
+                  'exponweib': stats.exponweib,
+                  'f': stats.f,
+                  'fatiguelife': stats.fatiguelife,
+                  'fisk': stats.fisk,
+                  'foldcauchy': stats.foldcauchy,
+                  'foldnorm': stats.foldnorm,
+                  'gamma': stats.gamma,
+                  'gausshyper': stats.gausshyper,
+                  'genexpon': stats.genexpon,
+                  'genextreme': stats.genextreme,
+                  'gengamma': stats.gengamma,
+                  'genhalflogistic': stats.genhalflogistic,
+                  'genhyperbolic': stats.genhyperbolic,
+                  'geninvgauss': stats.geninvgauss,
+                  'genlogistic': stats.genlogistic,
+                  'gennorm': stats.gennorm,
+                  'genpareto': stats.genpareto,
+                  'gibrat': stats.gibrat,
+                  'gompertz': stats.gompertz,
+                  'gumbel_l': stats.gumbel_l,
+                  'gumbel_r': stats.gumbel_r,
+                  'halfcauchy': stats.halfcauchy,
+                  'halfgennorm': stats.halfgennorm,
+                  'halflogistic': stats.halflogistic,
+                  'halfnorm': stats.halfnorm,
+                  'hypsecant': stats.hypsecant,
+                  'invgamma': stats.invgamma,
+                  'invgauss': stats.invgauss,
+                  'invweibull': stats.invweibull,
+                  'johnsonsb': stats.johnsonsb,
+                  'johnsonsu': stats.johnsonsu,
+                  'kappa3': stats.kappa3,
+                  'kappa4': stats.kappa4,
+                  'ksone': stats.ksone,
+                  'kstwo': stats.kstwo,
+                  'kstwobign': stats.kstwobign,
+                  'laplace': stats.laplace,
+                  'laplace_asymmetric': stats.laplace_asymmetric,
+                  'levy': stats.levy,
+                  'levy_l': stats.levy_l,
+                  'levy_stable': stats.levy_stable,
+                  'loggamma': stats.loggamma,
+                  'logistic': stats.logistic,
+                  'loglaplace': stats.loglaplace,
+                  'lognorm': stats.lognorm,
+                  'loguniform': stats.loguniform,
+                  'lomax': stats.lomax,
+                  'maxwell': stats.maxwell,
+                  'mielke': stats.mielke,
+                  'moyal': stats.moyal,
+                  'nakagami': stats.nakagami,
+                  'ncf': stats.ncf,
+                  'nct': stats.nct,
+                  'ncx2': stats.ncx2,
+                  'norm': stats.norm,
+                  'norminvgauss': stats.norminvgauss,
+                  'pareto': stats.pareto,
+                  'pearson3': stats.pearson3,
+                  'powerlaw': stats.powerlaw,
+                  'powerlognorm': stats.powerlognorm,
+                  'powernorm': stats.powernorm,
+                  'rayleigh': stats.rayleigh,
+                  'rdist': stats.rdist,
+                  'recipinvgauss': stats.recipinvgauss,
+                  'reciprocal': stats.reciprocal,
+                  'rel_breitwigner': stats.rel_breitwigner,
+                  'rice': stats.rice,
+                  'rv_continuous': stats.rv_continuous,
+                  'rv_histogram': stats.rv_histogram,
+                  'semicircular': stats.semicircular,
+                  'skewcauchy': stats.skewcauchy,
+                  'skewnorm': stats.skewnorm,
+                  'studentized_range': stats.studentized_range,
+                  't': stats.t,
+                  'trapezoid': stats.trapezoid,
+                  'trapz': stats.trapz,
+                  'triang': stats.triang,
+                  'truncexpon': stats.truncexpon,
+                  'truncnorm': stats.truncnorm,
+                  'truncpareto': stats.truncpareto,
+                  'truncweibull_min': stats.truncweibull_min,
+                  'tukeylambda': stats.tukeylambda,
+                  'uniform': stats.uniform,
+                  'vonmises': stats.vonmises,
+                  'vonmises_fisher': stats.vonmises_fisher,
+                  'vonmises_line': stats.vonmises_line,
+                  'wald': stats.wald,
+                  'weibull_max': stats.weibull_max,
+                  'weibull_min': stats.weibull_min,
+                  'wrapcauchy': stats.weibull_min}
 
 
 def get_quantiles_from_distr(data: pd.DataFrame,
@@ -568,7 +567,7 @@ def get_quantiles_from_distr(data: pd.DataFrame,
                 q0.5 - qmin = value  
                 q0.1 = q0.5 - 4/5 * value
 
-    Thanks to this approach, quantile values are continous (except LightGBM
+    Thanks to this approach, quantile values are continuous (except LightGBM
         predictions that exceed min/max site_id value) and will never exceed
         min and max values range.
     

@@ -71,7 +71,7 @@ if NO_NAT_FLOW_SITES == True:
     #Get params
     params_dict_no_nat_flow =\
         joblib.load('data\lgbm_model_params_no_nat_flow.pkl')
-    #Set small number of hyperparams optmization iterations. It's only
+    #Set small number of hyperparams optimization iterations. It's only
     #for 3 site_ids, so it doesn't have to be bigger
     distr_perc_dict_no_nat_flow = {5: 0.25,
                                    6: 0.15,
@@ -79,8 +79,8 @@ if NO_NAT_FLOW_SITES == True:
 
 #Different models are created for different months
 issue_months = [1, 2, 3, 4, 5, 6, 7]
-#Number of boost rounds for following months. Taken from hyparparameters
-#optimization. IF CV is ran, it is overwritten with CV results
+#Number of boost rounds for following months. Taken from hyperparameters
+#optimization. IF CV is run, it is overwritten with CV results
 num_rounds_months = [140, 240, 400, 340, 800, 740, 1000]
 #Set eval to show training results every EVAL step
 EVAL = 100
@@ -120,23 +120,23 @@ lgb_models_90 = []
 #Change types to 'category' in categorical columns
 categorical = ['site_id']
 train = to_categorical(['site_id'],
-                      train)
+                       train)
 #Get labels
 labels = train['volume']
 
 #Select data concerning volume residuals
 if RESIDUALS == True:
     train.loc[(train.month == 7) & ~(train.site_id.isin(['american_river_folsom_lake',
-                                                        'san_joaquin_river_millerton_reservoir',
-                                                        'merced_river_yosemite_at_pohono_bridge'])),
+                                                         'san_joaquin_river_millerton_reservoir',
+                                                         'merced_river_yosemite_at_pohono_bridge'])),
               'volume_residuals'] = train.volume - train.nat_flow_sum_Apr_Jun
     train.loc[(train.month == 6) & ~(train.site_id.isin(['american_river_folsom_lake',
-                                                        'san_joaquin_river_millerton_reservoir',
-                                                        'merced_river_yosemite_at_pohono_bridge'])),
+                                                         'san_joaquin_river_millerton_reservoir',
+                                                         'merced_river_yosemite_at_pohono_bridge'])),
               'volume_residuals'] = train.volume - train.nat_flow_sum_Apr_May
     train.loc[(train.month == 5) & ~(train.site_id.isin(['american_river_folsom_lake',
-                                                        'san_joaquin_river_millerton_reservoir',
-                                                        'merced_river_yosemite_at_pohono_bridge'])),
+                                                         'san_joaquin_river_millerton_reservoir',
+                                                         'merced_river_yosemite_at_pohono_bridge'])),
               'volume_residuals'] = train.volume - train.nat_flow_sum_Apr_Apr
     #Set site ids without naturalized flow history
     site_ids_no_nat_flow = ['american_river_folsom_lake',
@@ -157,7 +157,7 @@ if RUN_FINAL_SOLUTION:
     preds_final = pd.DataFrame()
     #Run Jan-Apr models
     issue_months = [1, 2, 3, 4]
-    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
         interval_coverage_all_months, best_interval_early_stopping, preds =\
             lgbm_cv(train,
                     labels,
@@ -179,7 +179,7 @@ if RUN_FINAL_SOLUTION:
 
     #Run May-Jul models for 23 site ids with naturalized flow history
     issue_months = [5, 6, 7]
-    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
         interval_coverage_all_months, best_interval_early_stopping, preds =\
             lgbm_cv_residuals(train_23,
                               labels_residuals,
@@ -201,7 +201,7 @@ if RUN_FINAL_SOLUTION:
     preds_final = pd.concat([preds_final, preds])
 
     #Run May-Jul models for 3 site ids without naturalized flow history
-    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+    best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
         interval_coverage_all_months, best_interval_early_stopping, preds =\
             lgbm_cv(train,
                     labels,
@@ -222,7 +222,7 @@ if RUN_FINAL_SOLUTION:
     #Append preds
     preds_final = pd.concat([preds_final, preds])
 
-    #Get submision format
+    #Get submission format
     #Get cross-validation LB format for predictions
     submission = pd.read_csv('data\cross_validation_submission_format.csv')
     #Get issue date encoding
@@ -261,14 +261,14 @@ if RUN_FINAL_SOLUTION:
                                        on = ['site_id', 'year'])
     #Get quantile loss for each quantile
     result_10 = mean_pinball_loss(submission_with_volumes.volume,
-                            submission_with_volumes.volume_10,
-                            alpha = 0.1)
+                                  submission_with_volumes.volume_10,
+                                  alpha = 0.1)
     result_50 = mean_pinball_loss(submission_with_volumes.volume,
-                            submission_with_volumes.volume_50,
-                            alpha = 0.5)
+                                  submission_with_volumes.volume_50,
+                                  alpha = 0.5)
     result_90 = mean_pinball_loss(submission_with_volumes.volume,
-                            submission_with_volumes.volume_90,
-                            alpha = 0.9)
+                                  submission_with_volumes.volume_90,
+                                  alpha = 0.9)
     #Get final metric
     cv_result = 2 * (result_10 + result_50 + result_90) / 3
     print(cv_result)
@@ -278,7 +278,7 @@ else:
         if NO_NAT_FLOW_SITES == False:
             if RESIDUALS == True:
                 #Volume residuals CV
-                best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+                best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
                     interval_coverage_all_months, best_interval_early_stopping, preds =\
                         lgbm_cv_residuals(train_23,
                                           labels_residuals,
@@ -298,7 +298,7 @@ else:
                                           distr_perc_dict)
             else:
                 #Basic CV
-                best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+                best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
                     interval_coverage_all_months, best_interval_early_stopping, preds =\
                         lgbm_cv(train,
                                 labels,
@@ -317,7 +317,7 @@ else:
                                 distr_perc_dict)
         else:
             #NO_NAT_FLOW_SITES CV
-            best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
+            best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
                 interval_coverage_all_months, best_interval_early_stopping, preds =\
                     lgbm_cv(train,
                             labels,

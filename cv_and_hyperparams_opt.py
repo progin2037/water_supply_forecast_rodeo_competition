@@ -47,7 +47,7 @@ def get_cv_folds(train: pd.DataFrame,
             train_cv_idxs.append(list(train[(train.year != year) &
                                             (train.month == month)].index))
             test_cv_idxs.append(list(train[(train.year == year) &
-                                            (train.month == month)].index))
+                                           (train.month == month)].index))
     return train_cv_idxs, test_cv_idxs
 
 
@@ -170,7 +170,7 @@ def train_cv(train: pd.DataFrame,
         lgb_models[fold] = lgb_model
     else:
         #For other CV iters, update LightGBM model for early_stopping_step
-        #number of itearations
+        #number of iterations
         while lgb_models[fold].current_iteration() < num_boost_round_month:
             lgb_models[fold].update()
     #Get predictions
@@ -188,15 +188,15 @@ def nat_flow_sum_clipping(train: pd.DataFrame,
                           multip_10: float,
                           multip_50: float,
                           multip_90: float,
-                          multip_10_thres: float=1.0,
-                          multip_50_thres: float=1.0,
-                          multip_90_thres: float=1.0,
-                          multip_10_detroit: float=1.0,
-                          multip_50_detroit: float=1.0,
-                          multip_90_detroit: float=1.0,
-                          multip_10_thres_detroit: float=1.0,
-                          multip_50_thres_detroit: float=1.0,
-                          multip_90_thres_detroit: float=1.0) -> pd.DataFrame:
+                          multip_10_thres: float = 1.0,
+                          multip_50_thres: float = 1.0,
+                          multip_90_thres: float = 1.0,
+                          multip_10_detroit: float = 1.0,
+                          multip_50_detroit: float = 1.0,
+                          multip_90_detroit: float = 1.0,
+                          multip_10_thres_detroit: float = 1.0,
+                          multip_50_thres_detroit: float = 1.0,
+                          multip_90_thres_detroit: float = 1.0) -> pd.DataFrame:
     """
     Amendments to results based on naturalized flow. If naturalized flow since
     April (for most site_ids) up to selected month with chosen multipliers is
@@ -256,11 +256,11 @@ def nat_flow_sum_clipping(train: pd.DataFrame,
         #Append nat flow sum column. If residuals are used, nat_flow_sum_col
         #should be already appended
         results_clipped = pd.merge(result_df,
-                                  train.loc[(train.index.isin(test_cv_idxs[fold])),
-                                            ['site_id', 'issue_date_no_year',
+                                   train.loc[(train.index.isin(test_cv_idxs[fold])),
+                                             ['site_id', 'issue_date_no_year',
                                              nat_flow_sum_col]],
-                                  how = 'left',
-                                  on = ['site_id', 'issue_date_no_year'])
+                                   how = 'left',
+                                   on = ['site_id', 'issue_date_no_year'])
     else:
         results_clipped = result_df.copy()
     #Get nat_flow_sum to volume ratios
@@ -275,81 +275,81 @@ def nat_flow_sum_clipping(train: pd.DataFrame,
     #within boundaries for condition execution
     results_clipped['volume_10_with_mult'] =\
         results_clipped.apply(lambda x: max(x[nat_flow_sum_col] * multip_10,
-                                        x[nat_flow_sum_col] * multip_10 *\
+                                            x[nat_flow_sum_col] * multip_10 *
                                             x.volume_10_nat_flow_sum_ratio),
                               axis = 1)
     results_clipped['volume_50_with_mult'] =\
         results_clipped.apply(lambda x: max(x[nat_flow_sum_col] * multip_50,
-                                        x[nat_flow_sum_col] * multip_50 *\
+                                            x[nat_flow_sum_col] * multip_50 *
                                             x.volume_50_nat_flow_sum_ratio),
                               axis = 1)
     results_clipped['volume_90_with_mult'] =\
         results_clipped.apply(lambda x: max(x[nat_flow_sum_col] * multip_90,
-                                        x[nat_flow_sum_col] * multip_90 *\
+                                            x[nat_flow_sum_col] * multip_90 *
                                             x.volume_90_nat_flow_sum_ratio),
                               axis = 1)
     #Change volume values using multipliers if threshold is within boundaries
     if month == 7:
         #Don't process detroit_lake_inflow for month 7 where it doesn't exist
         results_clipped.loc[
-            results_clipped.volume_10 < results_clipped[nat_flow_sum_col] *\
-                multip_10_thres,
+            results_clipped.volume_10 < results_clipped[nat_flow_sum_col] *
+            multip_10_thres,
             'volume_10'] = results_clipped.volume_10_with_mult
         results_clipped.loc[
-            results_clipped.volume_50 < results_clipped[nat_flow_sum_col] *\
-                multip_50_thres,
+            results_clipped.volume_50 < results_clipped[nat_flow_sum_col] *
+            multip_50_thres,
             'volume_50'] = results_clipped.volume_50_with_mult
         results_clipped.loc[
-            results_clipped.volume_90 < results_clipped[nat_flow_sum_col] *\
-                multip_90_thres,
+            results_clipped.volume_90 < results_clipped[nat_flow_sum_col] *
+            multip_90_thres,
             'volume_90'] = results_clipped.volume_90_with_mult
     if month in [5, 6]:
         #For detroit site
         results_clipped['volume_10_with_mult_detroit'] =\
             results_clipped.apply(
                 lambda x: max(x[nat_flow_sum_col] * multip_10_detroit,
-                              x[nat_flow_sum_col] * multip_10_detroit *\
-                                  x.volume_10_nat_flow_sum_ratio), axis = 1)
+                              x[nat_flow_sum_col] * multip_10_detroit *
+                              x.volume_10_nat_flow_sum_ratio), axis = 1)
         results_clipped['volume_50_with_mult_detroit'] =\
             results_clipped.apply(
                 lambda x: max(x[nat_flow_sum_col] * multip_50_detroit,
-                              x[nat_flow_sum_col] * multip_50_detroit *\
-                                  x.volume_50_nat_flow_sum_ratio), axis = 1)
+                              x[nat_flow_sum_col] * multip_50_detroit *
+                              x.volume_50_nat_flow_sum_ratio), axis = 1)
         results_clipped['volume_90_with_mult_detroit'] =\
             results_clipped.apply(
                 lambda x: max(x[nat_flow_sum_col] * multip_90_detroit,
-                              x[nat_flow_sum_col] * multip_90_detroit *\
-                                  x.volume_90_nat_flow_sum_ratio), axis = 1)        
+                              x[nat_flow_sum_col] * multip_90_detroit *
+                              x.volume_90_nat_flow_sum_ratio), axis = 1)
         #For other site ids
         results_clipped.loc[
-            (results_clipped.volume_10 < results_clipped[nat_flow_sum_col] *\
+            (results_clipped.volume_10 < results_clipped[nat_flow_sum_col] *
              multip_10_thres_detroit) &
             (results_clipped.site_id == 'detroit_lake_inflow'),
             'volume_10'] = results_clipped.volume_10_with_mult_detroit
         results_clipped.loc[
-            (results_clipped.volume_10 < results_clipped[nat_flow_sum_col] *\
+            (results_clipped.volume_10 < results_clipped[nat_flow_sum_col] *
              multip_10_thres) &
             (results_clipped.site_id != 'detroit_lake_inflow'),
             'volume_10'] = results_clipped.volume_10_with_mult
 
         results_clipped.loc[
-            (results_clipped.volume_50 < results_clipped[nat_flow_sum_col] *\
+            (results_clipped.volume_50 < results_clipped[nat_flow_sum_col] *
              multip_50_thres_detroit) &
             (results_clipped.site_id == 'detroit_lake_inflow'),
             'volume_50'] = results_clipped.volume_50_with_mult_detroit
         results_clipped.loc[
-            (results_clipped.volume_50 < results_clipped[nat_flow_sum_col] *\
+            (results_clipped.volume_50 < results_clipped[nat_flow_sum_col] *
              multip_50_thres) &
             (results_clipped.site_id != 'detroit_lake_inflow'),
             'volume_50'] = results_clipped.volume_50_with_mult
 
         results_clipped.loc[
-            (results_clipped.volume_90 < results_clipped[nat_flow_sum_col] *\
+            (results_clipped.volume_90 < results_clipped[nat_flow_sum_col] *
              multip_90_thres_detroit) &
             (results_clipped.site_id == 'detroit_lake_inflow'),
             'volume_90'] = results_clipped.volume_90_with_mult_detroit
         results_clipped.loc[
-            (results_clipped.volume_90 < results_clipped[nat_flow_sum_col] *\
+            (results_clipped.volume_90 < results_clipped[nat_flow_sum_col] *
              multip_90_thres) &
             (results_clipped.site_id != 'detroit_lake_inflow'),
             'volume_90'] = results_clipped.volume_90_with_mult
@@ -371,9 +371,9 @@ def lgbm_cv(train: pd.DataFrame,
             min_max_site_id_dict: dict,
             path_distr: str,
             distr_perc_dict: dict,
-            no_nat_flow_sites: bool=False) -> tuple[np.ndarray, float, float,
-                                                    list, np.ndarray, float,
-                                                    pd.DataFrame]:
+            no_nat_flow_sites: bool = False) -> tuple[np.ndarray, float, float,
+                                                      list, np.ndarray, float,
+                                                      pd.DataFrame]:
     """
     Run LightGBM CV with early stopping, get distribution estimates and
     average the results. Perform additional clipping to model predictions.
@@ -413,7 +413,7 @@ def lgbm_cv(train: pd.DataFrame,
             estimate. For 0.4 value, it's 40% (while LightGBM model is 60%).
             Different months use different distribution percentage (1 for
             January, 2 for February, ..., 7 for July)
-        no_nat_flow_sites (bool): Indicates if it's an optmization pipeline for
+        no_nat_flow_sites (bool): Indicates if it's an optimization pipeline for
             3 site_ids without naturalized flow columns. Defaults to False
     Returns:
         best_cv_early_stopping (np.ndarray): CV results from different months
@@ -436,9 +436,6 @@ def lgbm_cv(train: pd.DataFrame,
 
     #Initialize predictions for different folds
     final_preds_all_months = pd.DataFrame()
-    results_10_clipped = []
-    results_50_clipped = []
-    results_90_clipped = []
     cv_results_all_months = dict() #CV results from different months
     results_coverage_all_months = dict() #interval coverage from different months
     results_10 = []
@@ -483,7 +480,7 @@ def lgbm_cv(train: pd.DataFrame,
         #Start training. Train until early stopping/maximum number of iters met
         #######################################################################
         while (num_prev_iters_better < early_stopping_rounds) &\
-            (num_boost_round_month <= num_boost_round):
+              (num_boost_round_month <= num_boost_round):
             #Initialize variables for given iter
             results_10_clipped = []
             results_50_clipped = []
@@ -597,38 +594,36 @@ def lgbm_cv(train: pd.DataFrame,
                 #and Q0.9
                 result_df['volume_10'] =\
                     distr_perc * result_df.volume_10_distr +\
-                        (1 - distr_perc) * result_df.volume_10_lgbm
+                    (1 - distr_perc) * result_df.volume_10_lgbm
                 result_df['volume_90'] =\
                     distr_perc * result_df.volume_90_distr +\
-                        (1 - distr_perc) * result_df.volume_90_lgbm
+                    (1 - distr_perc) * result_df.volume_90_lgbm
                 #Get quantile loss for given fold
                 if no_nat_flow_sites == True:
                     #Use label indexes only for 3 site ids
                     result_10 = mean_pinball_loss(labels[result_df.index],
-                                            result_df.volume_10,
-                                            alpha = 0.1)
+                                                  result_df.volume_10,
+                                                  alpha = 0.1)
                     result_50 = mean_pinball_loss(labels[result_df.index],
-                                            result_df.volume_50,
-                                            alpha = 0.5)
+                                                  result_df.volume_50,
+                                                  alpha = 0.5)
                     result_90 = mean_pinball_loss(labels[result_df.index],
-                                            result_df.volume_90,
-                                            alpha = 0.9)
+                                                  result_df.volume_90,
+                                                  alpha = 0.9)
                 else:
                     result_10 = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                            result_df.volume_10,
-                                            alpha = 0.1)
+                                                  result_df.volume_10,
+                                                  alpha = 0.1)
                     result_50 = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                            result_df.volume_50,
-                                            alpha = 0.5)
+                                                  result_df.volume_50,
+                                                  alpha = 0.5)
                     result_90 = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                            result_df.volume_90,
-                                            alpha = 0.9)
+                                                  result_df.volume_90,
+                                                  alpha = 0.9)
                 #Append results from this fold
                 results_10.append(result_10)
                 results_50.append(result_50)
                 results_90.append(result_90)
-                #Get competition metric
-                cv_result = 2 * (result_10 + result_50 + result_90) / 3
 
                 ###############################################################
                 #nat_flow_sum clipping
@@ -722,21 +717,23 @@ def lgbm_cv(train: pd.DataFrame,
                         results_clipped.volume_90,
                         alpha = 0.9)
 
-                    result_coverage = interval_coverage(np.array(labels[result_df[result_df.site_id.isin(site_ids_no_nat_flow)].index]),
+                    result_coverage = interval_coverage(np.array(
+                        labels[result_df[result_df.site_id.isin(site_ids_no_nat_flow)].index]),
                             np.array(results_clipped[['volume_10', 'volume_50', 'volume_90']]))
                 else:
                     result_10_clipped = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                            results_clipped.volume_10,
-                                            alpha = 0.1)
+                                                          results_clipped.volume_10,
+                                                          alpha = 0.1)
                     result_50_clipped = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                            results_clipped.volume_50,
-                                            alpha = 0.5)
+                                                          results_clipped.volume_50,
+                                                          alpha = 0.5)
                     result_90_clipped = mean_pinball_loss(labels[test_cv_idxs[fold]],
-                                            results_clipped.volume_90,
-                                            alpha = 0.9)
+                                                          results_clipped.volume_90,
+                                                          alpha = 0.9)
 
                     result_coverage = interval_coverage(np.array(labels[test_cv_idxs[fold]]),
-                                                        np.array(results_clipped[['volume_10', 'volume_50', 'volume_90']]))
+                                                        np.array(results_clipped[[
+                                                            'volume_10', 'volume_50', 'volume_90']]))
 
                 #Append results from this fold
                 results_10_clipped.append([fold, result_10_clipped, num_boost_round_month])
@@ -810,8 +807,8 @@ def lgbm_cv(train: pd.DataFrame,
                 results_coverage_avg_fold[:-num_prev_iters_better]
             #Keep only predictions from best num_boost_rounds
             final_preds = final_preds[
-                final_preds.num_boost_rounds == num_boost_round_month -\
-                    (1 + num_prev_iters_better) * early_stopping_step]
+                final_preds.num_boost_rounds == num_boost_round_month -
+                (1 + num_prev_iters_better) * early_stopping_step]
         cv_results_all_months[month] = cv_results_avg_fold
         results_coverage_all_months[month] = results_coverage_avg_fold
         #Append predictions from given month
@@ -828,7 +825,7 @@ def lgbm_cv(train: pd.DataFrame,
     #Apr-Jun period, there aren't any values for this site_id for July, so
     #there's a need for correction
 
-    #Add month imporance. July has less importance, as 25 out of 26 site_ids
+    #Add month importance. July has less importance, as 25 out of 26 site_ids
     #have values for this month
     if len(issue_months) == 7:
         month_importance = np.array([1, 1, 1, 1, 1, 1, 25/26])
@@ -839,7 +836,7 @@ def lgbm_cv(train: pd.DataFrame,
 
     #Sum weights
     sum_weights = np.sum(month_importance)
-    #Ratio of importance to sum of all importancs
+    #Ratio of importance to sum of all weights
     month_weights = month_importance / sum_weights
     #Sum of results for different months multiplied by weights to get
     #a weighted average over different months
@@ -856,9 +853,9 @@ def lgbm_cv(train: pd.DataFrame,
     #Get weighted average also for interval
     best_interval_early_stopping =\
         np.sum(best_interval_early_stopping[:, 0] * month_weights)
-    return best_cv_early_stopping, result_final_rms_avg, result_final_avg,\
-        num_rounds_months, interval_coverage_all_months,\
-            best_interval_early_stopping, final_preds_all_months
+    return best_cv_early_stopping, result_final_rms_avg, result_final_avg, \
+        num_rounds_months, interval_coverage_all_months, \
+        best_interval_early_stopping, final_preds_all_months
 
 
 def lgbm_cv_residuals(train: pd.DataFrame,
@@ -941,9 +938,6 @@ def lgbm_cv_residuals(train: pd.DataFrame,
     #Initialize predictions for different folds
     final_preds_all_months = pd.DataFrame()
 
-    results_10_clipped = []
-    results_50_clipped = []
-    results_90_clipped = []
     cv_results_all_months = dict() #CV results from different months
     results_coverage_all_months = dict() #interval coverage from different months
     results_10 = []
@@ -991,7 +985,7 @@ def lgbm_cv_residuals(train: pd.DataFrame,
         #Start training. Train until early stopping/maximum number of iters met
         #######################################################################
         while (num_prev_iters_better < early_stopping_rounds) &\
-            (num_boost_round_month <= num_boost_round):
+              (num_boost_round_month <= num_boost_round):
             #Initialize variables for given iter
             results_10_clipped = []
             results_50_clipped = []
@@ -1062,12 +1056,13 @@ def lgbm_cv_residuals(train: pd.DataFrame,
                 result_df['volume_90_lgbm'] = preds_90_lgbm
                 #Roll back to volume from volume residuals
                 result_df = pd.merge(result_df,
-                          train.loc[(train.index.isin(test_cv_idxs[fold])),
-                                    ['site_id',
-                                     'issue_date_no_year',
-                                     nat_flow_sum_col]],
-                          how = 'left',
-                          on = ['site_id', 'issue_date_no_year'])
+                                     train.loc[
+                                         (train.index.isin(test_cv_idxs[fold])),
+                                         ['site_id',
+                                          'issue_date_no_year',
+                                          nat_flow_sum_col]],
+                                     how = 'left',
+                                     on = ['site_id', 'issue_date_no_year'])
                 result_df['volume_50'] = result_df['volume_50'] +\
                     result_df[nat_flow_sum_col]
                 result_df['volume_10_lgbm'] = result_df['volume_10_lgbm'] +\
@@ -1116,26 +1111,24 @@ def lgbm_cv_residuals(train: pd.DataFrame,
                 #and Q0.9
                 result_df['volume_10'] =\
                     distr_perc * result_df.volume_10_distr +\
-                        (1 - distr_perc) * result_df.volume_10_lgbm
+                    (1 - distr_perc) * result_df.volume_10_lgbm
                 result_df['volume_90'] =\
                     distr_perc * result_df.volume_90_distr +\
-                        (1 - distr_perc) * result_df.volume_90_lgbm
+                    (1 - distr_perc) * result_df.volume_90_lgbm
                 #Get quantile loss for given fold. Use real labels
                 result_10 = mean_pinball_loss(real_labels[test_cv_idxs[fold]],
-                                        result_df.volume_10,
-                                        alpha = 0.1)
+                                              result_df.volume_10,
+                                              alpha = 0.1)
                 result_50 = mean_pinball_loss(real_labels[test_cv_idxs[fold]],
-                                        result_df.volume_50,
-                                        alpha = 0.5)
+                                              result_df.volume_50,
+                                              alpha = 0.5)
                 result_90 = mean_pinball_loss(real_labels[test_cv_idxs[fold]],
-                                        result_df.volume_90,
-                                        alpha = 0.9)
+                                              result_df.volume_90,
+                                              alpha = 0.9)
                 #Append results from this fold
                 results_10.append(result_10)
                 results_50.append(result_50)
                 results_90.append(result_90)
-                #Get competition metric
-                cv_result = 2 * (result_10 + result_50 + result_90) / 3
 
                 ###############################################################
                 #nat_flow_sum clipping
@@ -1295,8 +1288,8 @@ def lgbm_cv_residuals(train: pd.DataFrame,
                 results_coverage_avg_fold[:-num_prev_iters_better]
             #Keep only predictions from best num_boost_rounds
             final_preds = final_preds[
-                final_preds.num_boost_rounds == num_boost_round_month -\
-                    (1 + num_prev_iters_better) * early_stopping_step]
+                final_preds.num_boost_rounds == num_boost_round_month -
+                (1 + num_prev_iters_better) * early_stopping_step]
         cv_results_all_months[month] = cv_results_avg_fold
         results_coverage_all_months[month] = results_coverage_avg_fold
         #Append predictions from given month
@@ -1313,7 +1306,7 @@ def lgbm_cv_residuals(train: pd.DataFrame,
     #Apr-Jun period, there aren't any values for this site_id for July, so
     #there's a need for correction
 
-    #Add month imporance. July has less importance, as 25 out of 26 site_ids
+    #Add month importance. July has less importance, as 25 out of 26 site_ids
     #have values for this month
     if len(issue_months) == 7:
         month_importance = np.array([1, 1, 1, 1, 1, 1, 25/26])
@@ -1324,7 +1317,7 @@ def lgbm_cv_residuals(train: pd.DataFrame,
 
     #Sum weights
     sum_weights = np.sum(month_importance)
-    #Ratio of importance to sum of all importancs
+    #Ratio of importance to sum of all weights
     month_weights = month_importance / sum_weights
     #Sum of results for different months multiplied by weights to get
     #a weighted average over different months
@@ -1341,9 +1334,9 @@ def lgbm_cv_residuals(train: pd.DataFrame,
     #Get weighted average also for interval
     best_interval_early_stopping =\
         np.sum(best_interval_early_stopping[:, 0] * month_weights)
-    return best_cv_early_stopping, result_final_rms_avg, result_final_avg,\
-        num_rounds_months, interval_coverage_all_months,\
-            best_interval_early_stopping, final_preds_all_months
+    return best_cv_early_stopping, result_final_rms_avg, result_final_avg, \
+        num_rounds_months, interval_coverage_all_months, \
+        best_interval_early_stopping, final_preds_all_months
 
 
 def objective(trial: optuna.trial.Trial,
@@ -1364,7 +1357,7 @@ def objective(trial: optuna.trial.Trial,
               final_tuning: bool,
               residuals: bool,
               real_labels: pd.Series,
-              no_nat_flow_sites: bool=False) -> float:
+              no_nat_flow_sites: bool = False) -> float:
     """
     Set logic for optuna hyperparameters tuning, set range of values for
     different hyperparameters, append CV evaluation.
@@ -1410,16 +1403,16 @@ def objective(trial: optuna.trial.Trial,
             (True) with new range after manual examination of initial results
         residuals (bool): Informs if predictions are made for volume residuals
         real_labels (pd.Series): Labels corresponding to train data using volume
-        no_nat_flow_sites (bool): Indicates if it's an optmization pipeline for
+        no_nat_flow_sites (bool): Indicates if it's an optimization pipeline for
             3 site_ids without naturalized flow columns
     Returns:
         best_cv_avg (float): Score for this optimization iteration
     """
     #Set repetitive parameters created in model_params.py
-    BAGGING_FREQ, OBJECTIVE, METRIC, VERBOSE, REG_ALPHA, MIN_GAIN_TO_SPLIT,\
+    BAGGING_FREQ, OBJECTIVE, METRIC, VERBOSE, REG_ALPHA, MIN_GAIN_TO_SPLIT, \
         MIN_SUM_HESSIAN_IN_LEAF, FEATURE_FRACTION_SEED, SEED =\
-            joblib.load('data\general_hyperparams_final.pkl')
-    #Set minimial number of columns to one less than the number of columns.
+        joblib.load('data\general_hyperparams_final.pkl')
+    #Set minimal number of columns to one less than the number of columns.
     feature_fraction_min = (len(train_feat) - 1) / len(train_feat)
     if no_nat_flow_sites == False:
         if month in [1, 2, 3]:
@@ -1493,7 +1486,7 @@ def objective(trial: optuna.trial.Trial,
                       'verbose': VERBOSE,
                       'seed': SEED}
     else:
-        #Use more conservative range of hyperparamaters for 26 site ids training
+        #Use more conservative range of hyperparameters for 26 site ids training
         #with only 3 site ids without naturalized flow columns being evaluated
         params = {'objective': OBJECTIVE,
                   'metric': METRIC,
@@ -1525,46 +1518,46 @@ def objective(trial: optuna.trial.Trial,
     #Perform CV calculation
     if residuals == True:
         #CV pipeline for volume residuals calculation for 23 site ids
-        best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
-            interval_coverage_all_months, best_interval_early_stopping,\
-                final_preds =\
-                lgbm_cv_residuals(train,
-                                  labels,
-                                  real_labels,
-                                  num_boost_round,
-                                  num_boost_round_start,
-                                  early_stopping_rounds,
-                                  early_stopping_step,
-                                  month,
-                                  years_cv,
-                                  year_range,
-                                  train_feat_dict,
-                                  params_dict,
-                                  categorical,
-                                  min_max_site_id_dict,
-                                  path_distr,
-                                  distr_perc_dict)
+        best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
+            interval_coverage_all_months, best_interval_early_stopping, \
+            final_preds =\
+            lgbm_cv_residuals(train,
+                              labels,
+                              real_labels,
+                              num_boost_round,
+                              num_boost_round_start,
+                              early_stopping_rounds,
+                              early_stopping_step,
+                              month,
+                              years_cv,
+                              year_range,
+                              train_feat_dict,
+                              params_dict,
+                              categorical,
+                              min_max_site_id_dict,
+                              path_distr,
+                              distr_perc_dict)
     else:
         #CV pipeline for volume calculation
-        best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months,\
-            interval_coverage_all_months, best_interval_early_stopping,\
-                final_preds =\
-                lgbm_cv(train,
-                        labels,
-                        num_boost_round,
-                        num_boost_round_start,
-                        early_stopping_rounds,
-                        early_stopping_step,
-                        month,
-                        years_cv,
-                        year_range,
-                        train_feat_dict,
-                        params_dict,
-                        categorical,
-                        min_max_site_id_dict,
-                        path_distr,
-                        distr_perc_dict,
-                        no_nat_flow_sites)
+        best_cv_per_month, best_cv_avg_rms, best_cv_avg, num_rounds_months, \
+            interval_coverage_all_months, best_interval_early_stopping, \
+            final_preds =\
+            lgbm_cv(train,
+                    labels,
+                    num_boost_round,
+                    num_boost_round_start,
+                    early_stopping_rounds,
+                    early_stopping_step,
+                    month,
+                    years_cv,
+                    year_range,
+                    train_feat_dict,
+                    params_dict,
+                    categorical,
+                    min_max_site_id_dict,
+                    path_distr,
+                    distr_perc_dict,
+                    no_nat_flow_sites)
     #Set additional columns to save
     trial.set_user_attr("best_result_without_rms", best_cv_avg)
     trial.set_user_attr("num_boost_rounds_best", num_rounds_months[0])

@@ -28,7 +28,7 @@ def get_aggs_month_day(df_aggs: pd.DataFrame,
             issue dates - it is just day taken from all MM-DD issue date
             combinations (should contain 28 values)
         year_col (str): Year column to aggregate on. Keep in mind that it only
-            infulences column indicating year from df_aggs. It is used to
+            influences column indicating year from df_aggs. It is used to
             be able to distinguish between normal year and water year.
             For df_main 'year' is always used.
         suffix (str): Suffix added to name of created columns
@@ -48,7 +48,7 @@ def get_aggs_month_day(df_aggs: pd.DataFrame,
     aggr_values = pd.DataFrame()
     for month, day in zip(issue_months, issue_days):
         if month_since >= 10:
-            #If the earliest month is Oct/Nov/Dec, get all of the below:
+            #If the earliest month is Oct/Nov/Dec, get all the below:
             #   1. all data between month_since and Dec
             #   2. all data from months before issue month
             #   3. for the same month as issue month, get data from this month
@@ -110,7 +110,7 @@ def get_aggs_month(df_aggs: pd.DataFrame,
             issue dates - it is just month taken from all MM-DD issue date
             combinations (should contain 28 values)
         year_col (str): Year column to aggregate on. Keep in mind that it only
-            infulences column indicating year from df_aggs. It is used to
+            influences column indicating year from df_aggs. It is used to
             be able to distinguish between normal year and water year.
             For df_main 'year' is always used.
         suffix (str): Suffix added to name of created columns
@@ -130,7 +130,7 @@ def get_aggs_month(df_aggs: pd.DataFrame,
     aggr_values = pd.DataFrame()
     for month in issue_months.drop_duplicates().reset_index(drop = True):
         if month_since >= 10:
-            #If the earliest month is Oct/Nov/Dec, get all of the below:
+            #If the earliest month is Oct/Nov/Dec, get all the below:
             #   1. all data between month_since and Dec
             #   2. all data from months before issue month
             df_aggs_before_issue =\
@@ -143,7 +143,7 @@ def get_aggs_month(df_aggs: pd.DataFrame,
             #   2. data from months before issue month
             df_aggs_before_issue =\
                 df_aggs[(df_aggs.month >= month_since) &
-                           ((df_aggs.month < month))]
+                           (df_aggs.month < month)]
         #Per each site_id-year combination, get aggregated values
         to_add =\
             df_aggs_before_issue.groupby(['site_id', year_col])[cols].agg(aggs)
@@ -255,7 +255,7 @@ def get_prev_daily(df_aggs: pd.DataFrame,
         issue_days_unique (np.ndarray): A list of issue days from df_main. It should
             have values of 1, 8, 15, 22
         days_lag (int): How many days should be added to date from df_aggs to
-            be constistent with issue dates from df_main
+            be consistent with issue dates from df_main
     Returns:
         df_main (pd.DataFrame): The main DataFrame with appended prev columns
     """
@@ -280,7 +280,7 @@ def get_prev_daily(df_aggs: pd.DataFrame,
     df_aggs['year_issue'] = date_issue_split.str[0].astype('int')
     df_aggs['month_issue'] = date_issue_split.str[1].astype('int')
     df_aggs['day_issue'] = date_issue_split.str[2].astype('int')
-    #Get earliest matching day from df_main's issue days for each row.
+    #Get the earliest matching day from df_main's issue days for each row.
     #Days without looking into future were already selected and now the closest
     #day from df_main issue_dates will be determined to match with df_main 
     df_aggs['issue_date_day'] = np.nan
@@ -302,8 +302,8 @@ def get_prev_daily(df_aggs: pd.DataFrame,
     df_aggs.loc[df_aggs.issue_date_month == 13, 'issue_date_month'] = 1
     #Get final issue_date to merge with df_main
     df_aggs['issue_date_var'] = pd.to_datetime(
-        df_aggs.issue_date_year.astype('str') + '-' +\
-        df_aggs.issue_date_month.astype('int').astype('str') + '-' +\
+        df_aggs.issue_date_year.astype('str') + '-' +
+        df_aggs.issue_date_month.astype('int').astype('str') + '-' +
         df_aggs.issue_date_day.astype('int').astype('str')).astype('str')
     #Make sure that values are correctly sorted
     df_aggs = df_aggs.sort_values(['site_id', 'issue_date_var']).reset_index(drop = True)
@@ -335,10 +335,7 @@ def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataF
     (https://water.weather.gov/ahps/rfc/rfc.php) sources.
     
     Args:
-        train_monthly_naturalized_flow (pd.DataFrame): train monthly
-            naturalized flow
-        test_monthly_naturalized_flow (pd.DataFrame): test monthly
-            naturalized flow
+        train_monthly_naturalized_flow (pd.DataFrame): Monthly naturalized flow
     Returns:
         monthly_naturalized_flow (pd.DataFrame): merged monthly naturalized
             flow with some auxiliary features
@@ -347,14 +344,14 @@ def preprocess_monthly_naturalized_flow(train_monthly_naturalized_flow: pd.DataF
     monthly_naturalized_flow = train_monthly_naturalized_flow.\
         sort_values(['site_id', 'year', 'month']).reset_index(drop = True)
     #Get issue dates
-    monthly_naturalized_flow['issue_date'] = pd.to_datetime\
-        (monthly_naturalized_flow['year'].astype('str') + '-' +\
+    monthly_naturalized_flow['issue_date'] = pd.to_datetime(
+        monthly_naturalized_flow['year'].astype('str') + '-' +
              monthly_naturalized_flow['month'].astype('str'))
     monthly_naturalized_flow['issue_date'] =\
         monthly_naturalized_flow['issue_date'].astype('str')
     #Shift by 1 month to be able to easily merge without looking into future
     monthly_naturalized_flow['issue_date'] =\
-        (pd.to_datetime(monthly_naturalized_flow.issue_date) +\
+        (pd.to_datetime(monthly_naturalized_flow.issue_date) +
          pd.DateOffset(months = 1)).astype('str')
     return monthly_naturalized_flow
 
@@ -392,10 +389,10 @@ def nat_flow_sum_cumul_since_apr(train_monthly_naturalized_flow: pd.DataFrame,
         (train_monthly_naturalized_flow.site_id != 'pecos_r_nr_pecos')].\
         groupby(['site_id', 'forecast_year'])['nat_flow'].sum().reset_index()
     #Calculate pecos_r_nr_pecos separately. For this site_id, naturalized flow
-    #between March and July is calcluated in the competition, so use
+    #between March and July is calculated in the competition, so use
     #nat_flow_sum since March for this site_id.
     #detroit_lake_inflow doesn't need similar change, Apr-Jun volume is
-    #predicted for this site_id but it's safe to do it even for July as
+    #predicted for this site_id, but it's safe to do it even for July as
     #train_monthly_naturalized_flow dataset doesn't include July for this site
     nat_flow_sum_pecos = train_monthly_naturalized_flow[
         (train_monthly_naturalized_flow.month.between(3, month_end)) &
@@ -409,10 +406,10 @@ def nat_flow_sum_cumul_since_apr(train_monthly_naturalized_flow: pd.DataFrame,
     nat_flow_sum = nat_flow_sum.rename({'nat_flow': new_col_name}, axis = 1)
     #Merge with df_main
     df_main = pd.merge(df_main,
-             nat_flow_sum,
-             how = 'left',
-             left_on = ['site_id', 'year'],
-             right_on = ['site_id', 'forecast_year'])
+                       nat_flow_sum,
+                       how = 'left',
+                       left_on = ['site_id', 'year'],
+                       right_on = ['site_id', 'forecast_year'])
     df_main.drop('forecast_year', axis = 1, inplace = True)
     return df_main
 
@@ -626,8 +623,8 @@ def get_prev_cds_forecasts_data(path: str,
     stats_cds['issue_date_cds'] = stats_cds.issue_date_cds.astype('str')
     #Assign issue dates for df_main to be compatible with the closest available
     #ones from CDS forecasts
-    df_main['issue_date_cds'] = pd.to_datetime(df_main.year.astype('str') + '-' +\
-                                             df_main.month.astype('str') + '-' +\
+    df_main['issue_date_cds'] = pd.to_datetime(df_main.year.astype('str') + '-' +
+                                             df_main.month.astype('str') + '-' +
                                                  str(issue_day))
     df_main.loc[df_main.day < issue_day, 'issue_date_cds'] =\
         df_main.issue_date_cds - pd.DateOffset(months = 1)

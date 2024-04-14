@@ -155,10 +155,10 @@ def load_models(issue_months: list,
     #Iterate over paths from different months and append models to lists
     for month in issue_months:
         print(f'Load models from month {month}')
-        lgb_models_10.append\
-            (joblib.load(f'{path_save_models}\lgbm_10_{month}_month_{today}.pkl'))
-        lgb_models_50.append\
-            (joblib.load(f'{path_save_models}\lgbm_50_{month}_month_{today}.pkl'))
-        lgb_models_90.append\
-            (joblib.load(f'{path_save_models}\lgbm_90_{month}_month_{today}.pkl'))
+        lgb_models_10.append(
+            joblib.load(f'{path_save_models}\lgbm_10_{month}_month_{today}.pkl'))
+        lgb_models_50.append(
+            joblib.load(f'{path_save_models}\lgbm_50_{month}_month_{today}.pkl'))
+        lgb_models_90.append(
+            joblib.load(f'{path_save_models}\lgbm_90_{month}_month_{today}.pkl'))
     return lgb_models_10, lgb_models_50, lgb_models_90

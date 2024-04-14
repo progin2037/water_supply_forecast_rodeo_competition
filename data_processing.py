@@ -10,13 +10,13 @@ start = time.time()
 from utils import ReadAllData, years_cv, get_outliers, create_cds_dataframe
 #ReadAllData should take about 30-45 minutes to execute if run for the first time
 
-from feature_engineering import get_aggs_month_day, get_aggs_month,\
-preprocess_monthly_naturalized_flow, preprocess_snotel, get_snotel_diff,\
-get_prev_monthly, get_prev_daily, nat_flow_sum_cumul_since_apr,\
+from feature_engineering import get_aggs_month_day, get_aggs_month, \
+preprocess_monthly_naturalized_flow, preprocess_snotel, get_snotel_diff, \
+get_prev_monthly, get_prev_daily, nat_flow_sum_cumul_since_apr, \
 get_prev_cds_data, get_prev_cds_forecasts_data
 
 #Set threshold for outliers removal. A good practise is to set z-score threshold
-#to 3 but based on data exploration, it's save to remove more outliers within
+#to 3 but based on data exploration, it's safe to remove more outliers within
 #2.5 threshold
 OUT_THRES = 2.5
 #Keep data since given year
@@ -36,12 +36,10 @@ train = train[train.volume.notna()].reset_index(drop = True)
 
 #Get and save min and max values for given site_id. It's done after outliers
 #removal to exclude too small/big values from site_id's volume range. It's used
-#for all years as there isn't much data, so even potentially inacurate old
-#volumes before YEAR_SINCE are used. Min/max values are created separetely
+#for all years as there isn't much data, so even potentially inaccurate old
+#volumes before YEAR_SINCE are used. Min/max values are created separately
 #without each LOOCV year
 min_max_site_id_dict = dict()
-#Set threshold for removing outliers in min/max calculations
-OUT_THRES = 2.5
 for year_cv in years_cv:
     #Remove data from given CV fold and store it in a different DataFrame
     #Don't reset index, so index is kept
@@ -73,7 +71,7 @@ train = train.sort_values(['site_id', 'year']).reset_index(drop = True)
 #Read submission_format to get available issue_dates
 submission_format = dfs.submission_format.copy()
 #Get unique combinations of month_day, month and day from submission_format.
-#Month and day variable will be helpful later to faciliate processing.
+#Month and day variable will be helpful later to facilitate processing.
 issue_dates = submission_format['issue_date'].str[5:].unique()
 #issue_months has the same rows as issue_days. issue_months isn't a unique
 #list of months, it's just month from issue_dates' rows
@@ -122,38 +120,39 @@ streamflow['month'] = streamflow_dates_split.str[1].astype('int')
 streamflow['day'] = streamflow_dates_split.str[2].astype('int')
 
 #discharge_cfs_mean_std
-train = get_aggs_month_day(streamflow,
-                           train,
-                           ['discharge_cfs_mean'],
-                           ['std'],
-                           issue_months,
-                           issue_days,
-                           'year',
+train = get_aggs_month_day(df_aggs = streamflow,
+                           df_main = train,
+                           cols = ['discharge_cfs_mean'],
+                           aggs = ['std'],
+                           issue_months = issue_months,
+                           issue_days = issue_days,
+                           year_col = 'year',
                            suffix = '',
                            month_since = 12)
 #discharge_cfs_mean_since_Oct_std
-train = get_aggs_month_day(streamflow,
-                           train,
-                           ['discharge_cfs_mean'],
-                           ['std'],
-                           issue_months,
-                           issue_days,
-                           'year',
+train = get_aggs_month_day(df_aggs = streamflow,
+                           df_main = train,
+                           cols = ['discharge_cfs_mean'],
+                           aggs = ['std'],
+                           issue_months = issue_months,
+                           issue_days = issue_days,
+                           year_col = 'year',
                            suffix = '_since_Oct',
                            month_since = 10)
 #discharge_cfs_mean_Apr_mean
-train = get_aggs_month_day(streamflow,
-                           train,
-                           ['discharge_cfs_mean'],
-                           ['mean'],
-                           issue_months,
-                           issue_days,
-                           'year',
+train = get_aggs_month_day(df_aggs = streamflow,
+                           df_main = train,
+                           cols = ['discharge_cfs_mean'],
+                           aggs = ['mean'],
+                           issue_months = issue_months,
+                           issue_days = issue_days,
+                           year_col = 'year',
                            suffix = '_Apr',
                            month_since = 4)
 
 #Get monthly naturalized flow features
-train_monthly_naturalized_flow = preprocess_monthly_naturalized_flow(dfs.train_monthly_naturalized_flow)
+train_monthly_naturalized_flow = preprocess_monthly_naturalized_flow(
+    dfs.train_monthly_naturalized_flow)
 
 #Get naturalized flow from previous month
 train = get_prev_monthly(df_aggs = train_monthly_naturalized_flow,
@@ -166,14 +165,15 @@ train = get_prev_monthly(df_aggs = train_monthly_naturalized_flow,
                          day_start = 1)
 
 #Rename columns to make the processing easier
-train_monthly_naturalized_flow.rename({'volume': 'nat_flow'}, axis = 1, inplace = True)
+train_monthly_naturalized_flow.rename({'volume': 'nat_flow'},
+                                      axis = 1, inplace = True)
 #Get average naturalized flow since April, before issue date (nat_flow_Apr_mean)
-train = get_aggs_month(train_monthly_naturalized_flow,
-                       train,
-                       ['nat_flow'],
-                       ['mean'],
-                       issue_months,
-                       'forecast_year',
+train = get_aggs_month(df_aggs = train_monthly_naturalized_flow,
+                       df_main = train,
+                       cols = ['nat_flow'],
+                       aggs = ['mean'],
+                       issue_months = issue_months,
+                       year_col = 'forecast_year',
                        suffix = '_Apr',
                        month_since = 4)
 
@@ -202,7 +202,8 @@ cols = ['site_id', 'forecast_year', 'nat_flow']
 agg_col = 'nat_flow'
 
 for month in [10, 11]:
-    month_df = train_monthly_naturalized_flow.loc[train_monthly_naturalized_flow.month == month, cols].\
+    month_df = train_monthly_naturalized_flow.loc[
+        train_monthly_naturalized_flow.month == month, cols].\
         reset_index(drop = True)
     month_df = month_df.rename({agg_col: f'{agg_col}_{month}'}, axis = 1)
     train = pd.merge(train,
@@ -219,8 +220,8 @@ for month in [10, 11]:
               f'{agg_col}_{month}'] = np.nan
 
 #Snotel features
-snotel = preprocess_snotel(dfs.snotel,
-                           dfs.sites_to_snotel_stations)
+snotel = preprocess_snotel(snotel = dfs.snotel,
+                           sites_to_snotel_stations = dfs.sites_to_snotel_stations)
 
 #Get previous value of WTEQ_DAILY
 train = pd.merge(train,
@@ -230,13 +231,13 @@ train = pd.merge(train,
 train.rename({'WTEQ_DAILY': 'WTEQ_DAILY_prev'}, axis = 1, inplace = True)
 
 #WTEQ_DAILY_Apr_mean
-train = get_aggs_month_day(snotel,
-                           train,
-                           ['WTEQ_DAILY'],
-                           ['mean'],
-                           issue_months,
-                           issue_days,
-                           'year_forecast',
+train = get_aggs_month_day(df_aggs = snotel,
+                           df_main = train,
+                           cols = ['WTEQ_DAILY'],
+                           aggs = ['mean'],
+                           issue_months = issue_months,
+                           issue_days = issue_days,
+                           year_col = 'year_forecast',
                            suffix = '_Apr',
                            month_since = 4)
 
@@ -248,13 +249,13 @@ train = pd.merge(train,
 train.rename({'PREC_DAILY': 'PREC_DAILY_prev'}, axis = 1, inplace = True)
 
 #PREC_DAILY_Apr_mean
-train = get_aggs_month_day(snotel,
-                           train,
-                           ['PREC_DAILY'],
-                           ['mean'],
-                           issue_months,
-                           issue_days,
-                           'year_forecast',
+train = get_aggs_month_day(df_aggs = snotel,
+                           df_main = train,
+                           cols = ['PREC_DAILY'],
+                           aggs = ['mean'],
+                           issue_months = issue_months,
+                           issue_days = issue_days,
+                           year_col = 'year_forecast',
                            suffix = '_Apr',
                            month_since = 4)
 
@@ -323,17 +324,16 @@ cds_file = 'cds_monthly_snow'
 #If the script is run for the first time, create a .pkl file for a given CDS
 #data, as the file wasn't yet created from .nc
 if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
-    create_cds_dataframe(f'data/cds/{cds_file}.nc',
-                         dfs.geospatial,
-                         site_ids_unique,
-                         cds_file,
-                         False)
+    create_cds_dataframe(path = f'data/cds/{cds_file}.nc',
+                         geospatial = dfs.geospatial,
+                         output_name = cds_file,
+                         all_touched = False)
 #Get sd_prev latest data before issue_date
-train = get_prev_cds_data(f'data/cds/{cds_file}.pkl',
-                           train,
-                           5,
-                           ['sd'],
-                           ['sd_prev'])
+train = get_prev_cds_data(path = f'data/cds/{cds_file}.pkl',
+                          df_main = train,
+                          issue_day = 5,
+                          cols = ['sd'],
+                          new_col_names = ['sd_prev'])
 
 #CDS Copernicus forecasts
 #Set a dictionary with file data names and months on which predictions were
@@ -350,11 +350,10 @@ suffix = '_forecasts'
 #Iterate over dict elements and assign forecast averages to train
 for cds_file, issue_month in cds_forecasts_files.items():    
     if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
-        create_cds_dataframe(f'data/cds/{cds_file}.nc',
-                             dfs.geospatial,
-                             site_ids_unique,
-                             cds_file,
-                             True)
+        create_cds_dataframe(path = f'data/cds/{cds_file}.nc',
+                             geospatial = dfs.geospatial,
+                             output_name = cds_file,
+                             all_touched = True)
     train = get_prev_cds_forecasts_data(path = f'data/cds/{cds_file}.pkl',
                                         df_main = train,
                                         issue_month = issue_month,
@@ -384,11 +383,10 @@ suffix = '_forecasts_with_jun'
 #Iterate over dict elements and assign forecast averages to train
 for cds_file, issue_month in cds_forecasts_files.items():    
     if os.path.isfile(f'data/cds/{cds_file}.pkl') == False:
-        create_cds_dataframe(f'data/cds/{cds_file}.nc',
-                             dfs.geospatial,
-                             site_ids_unique,
-                             cds_file,
-                             True)
+        create_cds_dataframe(path = f'data/cds/{cds_file}.nc',
+                             geospatial = dfs.geospatial,
+                             output_name = cds_file,
+                             all_touched = True)
     train = get_prev_cds_forecasts_data(path = f'data/cds/{cds_file}.pkl',
                                         df_main = train,
                                         issue_month = issue_month,
